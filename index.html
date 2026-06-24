@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>pyattendance Web Client</title>
+  <style>
+    /* Reset default margins and padding */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #f3fbfb;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* Fullscreen iframe container */
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Overlay warning if the URL is not set yet */
+    .setup-warning {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      padding: 30px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      max-width: 450px;
+      width: calc(100% - 40px);
+      box-sizing: border-box;
+      border: 1px solid #edf2f7;
+    }
+    .setup-warning h2 {
+      margin-top: 0;
+      color: #25b9ba;
+      font-size: 20px;
+    }
+    .setup-warning p {
+      font-size: 14px;
+      color: #4a5568;
+      line-height: 1.6;
+    }
+    .setup-warning code {
+      display: block;
+      background: #f7fafc;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      word-break: break-all;
+      margin: 15px 0;
+      border: 1px solid #edf2f7;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 
+    PETUNJUK DEPLOY VERCEL:
+    1. Ganti URL di dalam atribut 'src' pada tag <iframe> di bawah dengan URL Web App Google Apps Script Anda (yang berakhiran /exec).
+    2. Simpan file ini dengan nama 'index.html' (huruf kecil semua) di dalam folder kosong baru.
+    3. Hubungkan folder tersebut ke Vercel atau drag-and-drop ke dashboard Vercel.
+  -->
+
+  <iframe 
+    src="https://script.google.com/macros/s/AKfycbzzprr1wY3KZOTcLOFegZevS2pMRfPE_q1Jjc6Uw7wQdsOyEX4589GFrGrVnfxdMIO8ag/exec" 
+    allow="camera; microphone; geolocation; display-capture; clipboard-write; clipboard-read"
+    allowfullscreen>
+  </iframe>
+
+  <!-- Kode JavaScript untuk mendeteksi apakah URL default masih terpasang -->
+  <script>
+    const iframe = document.querySelector('iframe');
+    const defaultPlaceholder = "ISI_DENGAN_URL_WEB_APP_APPS_SCRIPT_ANDA";
+    
+    if (iframe.getAttribute('src') === defaultPlaceholder || iframe.getAttribute('src').trim() === "") {
+      // Sembunyikan iframe dan tampilkan panduan konfigurasi
+      iframe.style.display = 'none';
+      
+      const warningDiv = document.createElement('div');
+      warningDiv.className = 'setup-warning';
+      warningDiv.innerHTML = `
+        <h2>Konfigurasi Diperlukan</h2>
+        <p>Anda perlu memasukkan URL Web App Google Apps Script Anda terlebih dahulu ke dalam file HTML ini agar absensi dapat berjalan.</p>
+        <p>Silakan buka file ini dan ubah atribut <code>src</code> pada tag <code>&lt;iframe&gt;</code> dengan URL web app Anda (misalnya yang berakhiran <code>/exec</code>):</p>
+        <code>src="https://script.google.com/macros/s/.../exec"</code>
+        <p style="font-size: 12px; color: #718096; margin-top: 20px;">Setelah diubah, Anda dapat menamai ulang file ini menjadi <strong>index.html</strong> dan mengunggahnya ke Vercel.</p>
+      `;
+      document.body.appendChild(warningDiv);
+    }
+  </script>
+</body>
+</html>
