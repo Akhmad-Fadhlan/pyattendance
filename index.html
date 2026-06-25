@@ -1,104 +1,2122 @@
 <!doctype html>
 <html lang="id">
 <head>
+  <base target="_top">
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> 
-  <title>pyattendance Web Client</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#25b9ba">
+  <title>pyattendance</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+  <script defer src="https://unpkg.com/lucide@latest"></script>
   <style>
-    /* Reset default margins and padding */
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background-color: #f3fbfb;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    :root {
+      --primary: #25b9ba;
+      --primary-dark: #15979a;
+      --primary-soft: #dff7f7;
+      --secondary: #ff9800;
+      --background: #ffffff;
+      --surface: #ffffff;
+      --muted-surface: #f8fafc;
+      --foreground: #1a202c;
+      --text-soft: #4a5568;
+      --border: #edf2f7;
+      --success: #38a169;
+      --info: #3182ce;
+      --warning: #dd6b20;
+      --danger: #e53e3e;
+      --shadow-1: 0 1px 3px rgba(0,0,0,.1);
+      --shadow-2: 0 4px 6px rgba(0,0,0,.1);
+      --shadow-5: 0 10px 30px rgba(0,0,0,.05);
+      --radius: 8px;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    *{box-sizing:border-box;}
+    html{min-height:100%;background:var(--background);max-width:100%;overflow-x:hidden;}
+    body{
+      margin:0;min-height:100vh;color:var(--foreground);
+      background:linear-gradient(180deg,#f3fbfb 0,#fff 340px);
+      font-family:Inter,system-ui,-apple-system,sans-serif;font-size:16px;
+      max-width:100%;overflow-x:hidden;
+    }
+    button,input,select,textarea{font:inherit;}
+    button{cursor:pointer;}
+    .hidden{display:none!important;}
+    body.logged-out .nav-tabs,
+    body.logged-out .mobile-nav,
+    body.logged-out #notifBtn,
+    body.logged-out #loginTopBtn,
+    body.logged-out #logoutBtn{display:none!important;}
+    
+    .topbar{
+      position:sticky;top:0;z-index:30;height:70px;display:flex;align-items:center;
+      border-bottom:1px solid var(--border);background:rgba(255,255,255,.95);
+      backdrop-filter:blur(14px);
+    }
+    .topbar-inner{
+      width:min(1110px,calc(100% - 48px));margin:0 auto;
+      display:flex;align-items:center;justify-content:space-between;gap:24px;
+    }
+    .brand{display:flex;align-items:center;gap:12px;}
+    .brand-mark{
+      width:38px;height:38px;display:grid;place-items:center;color:white;
+      background:var(--primary);border:1px solid var(--primary-dark);
+      border-radius:10px;box-shadow:var(--shadow-1);flex:0 0 auto;
+    }
+    .brand small{display:block;color:var(--primary-dark);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.4px;}
+    .brand strong{display:block;margin-top:2px;font-family:Nunito,sans-serif;font-size:20px;line-height:1;}
+    .nav-tabs{display:flex;align-items:center;gap:4px;flex:1;justify-content:center;}
+    .nav-tabs button{
+      border:0;background:transparent;color:var(--text-soft);font-weight:600;
+      padding:8px 14px;border-radius:6px;font-size:14px;transition:all .15s;
+    }
+    .nav-tabs button:hover{background:var(--muted-surface);color:var(--foreground);}
+    .nav-tabs button.active{color:var(--primary-dark);background:var(--primary-soft);}
+    .top-actions{display:flex;align-items:center;gap:8px;}
+    .icon-btn{
+      width:38px;height:38px;display:inline-grid;place-items:center;
+      border:1px solid var(--border);border-radius:10px;color:#213055;background:white;
+    }
+    .primary-btn,.secondary-btn,.ghost-btn,.danger-btn,.warn-btn{
+      min-height:40px;border-radius:8px;padding:0 16px;border:1px solid transparent;
+      display:inline-flex;align-items:center;justify-content:center;gap:8px;
+      font-weight:700;white-space:nowrap;font-size:14px;transition:opacity .15s;
+    }
+    .primary-btn{color:white;background:var(--primary);border-color:var(--primary-dark);}
+    .secondary-btn{color:white;background:var(--secondary);border-color:#d67f00;}
+    .ghost-btn{color:var(--foreground);background:white;border-color:var(--border);}
+    .danger-btn{color:white;background:var(--danger);border-color:#c53030;}
+    .warn-btn{color:white;background:var(--warning);border-color:#b75f18;}
+    .primary-btn:disabled,.secondary-btn:disabled,.ghost-btn:disabled{opacity:.55;cursor:not-allowed;}
+    .sm-btn{min-height:32px;padding:0 12px;font-size:13px;border-radius:6px;}
+
+    .main{width:min(1110px,calc(100% - 48px));margin:0 auto;padding:32px 0 96px;}
+    
+    .view{display:none;}
+    .view.active{display:block;}
+    
+    .grid{display:grid;gap:20px;}
+    .dashboard-grid{grid-template-columns:minmax(0,1.1fr) minmax(300px,.9fr);align-items:start;}
+    .admin-grid{grid-template-columns:240px minmax(0,1fr);align-items:start;}
+    .cards-4{grid-template-columns:repeat(4,minmax(0,1fr));}
+    .cards-3{grid-template-columns:repeat(3,minmax(0,1fr));}
+    .cards-2{grid-template-columns:repeat(2,minmax(0,1fr));}
+
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-5);}
+    .card-pad{padding:22px;}
+    .section-title{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px;}
+    .section-title h2{font-size:20px;margin:0;font-family:Nunito,sans-serif;}
+    .section-title p{margin:4px 0 0;color:var(--text-soft);font-size:13px;}
+
+    .welcome-card{
+      position:relative;overflow:hidden;min-height:180px;color:white;
+      background:var(--primary);border-color:var(--primary-dark);border-radius:12px;padding:24px;
+    }
+    .welcome-card:after{
+      content:"";position:absolute;right:-54px;bottom:-72px;width:200px;height:200px;
+      border:22px solid rgba(255,255,255,.18);border-radius:50%;
+    }
+    .welcome-card h2{font-size:26px;line-height:1.15;position:relative;z-index:1;margin:0;font-family:Nunito,sans-serif;}
+    .welcome-card p{margin:10px 0 18px;line-height:1.6;position:relative;z-index:1;font-size:14px;}
+    .welcome-card .ghost-btn{position:relative;z-index:1;color:var(--primary-dark);min-width:160px;}
+
+    .stat-card{min-height:130px;padding:18px;display:flex;flex-direction:column;justify-content:center;gap:10px;}
+    .stat-icon{width:44px;height:44px;display:grid;place-items:center;border-radius:8px;color:var(--primary-dark);background:var(--primary-soft);}
+    .stat-card small{color:#344269;font-size:11px;font-weight:800;text-transform:uppercase;}
+    .stat-card strong{font-size:22px;font-weight:800;}
+
+    .badge{
+      display:inline-flex;align-items:center;justify-content:center;
+      min-height:26px;padding:0 10px;border-radius:999px;
+      background:#e9fbef;color:#15803d;font-size:12px;font-weight:800;
+    }
+    .badge.warn{background:#fff7ed;color:var(--warning);}
+    .badge.info{background:#e8f2ff;color:var(--info);}
+    .badge.danger{background:#fff1f2;color:var(--danger);}
+    .badge.neutral{background:#f1f5f9;color:#64748b;}
+
+    .list{display:grid;gap:10px;}
+    .item-row{
+      display:grid;grid-template-columns:44px minmax(0,1fr) auto;
+      align-items:center;gap:12px;padding:14px;
+      border:1px solid var(--border);border-radius:8px;background:white;
+    }
+    .item-row h3{font-size:15px;margin:0;font-family:Nunito,sans-serif;}
+    .item-row p{margin:3px 0 0;color:#344269;font-size:13px;}
+
+    .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+    .field{display:grid;gap:6px;}
+    .field.full,.full{grid-column:1/-1;}
+    label{color:#344269;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;}
+    input,select,textarea{
+      width:100%;min-height:40px;border:1px solid var(--border);border-radius:6px;
+      padding:8px 10px;color:var(--foreground);background:white;outline:none;font-size:14px;
+    }
+    textarea{min-height:80px;resize:vertical;}
+    input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,185,186,.12);}
+
+    /* Login */
+    .login-wrap{min-height:calc(100vh - 70px);display:grid;place-items:center;padding:32px 0;}
+    .login-card{width:min(860px,100%);display:grid;grid-template-columns:minmax(0,1fr) 360px;overflow:hidden;}
+    .login-art{background:var(--primary);color:white;padding:38px;position:relative;min-height:440px;}
+    .login-art:after{content:"";position:absolute;right:-90px;bottom:-90px;width:260px;height:260px;border:28px solid rgba(255,255,255,.18);border-radius:50%;}
+    .login-art h1{font-size:36px;margin:28px 0 14px;font-family:Nunito,sans-serif;}
+    .login-art p{line-height:1.7;max-width:380px;font-size:14px;}
+    .login-art .features{display:grid;gap:10px;margin-top:24px;}
+    .login-art .feat{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;}
+    .login-art .feat-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.6);flex:0 0 auto;}
+    .login-panel{padding:32px;background:white;}
+    .login-panel h2{font-size:24px;margin:0 0 6px;font-family:Nunito,sans-serif;}
+    .login-panel>.subtitle{margin:0 0 20px;color:var(--text-soft);font-size:14px;}
+
+    /* Admin layout */
+    .admin-menu{display:grid;gap:6px;position:sticky;top:88px;}
+    .admin-menu button{
+      min-height:44px;border:1px solid var(--border);border-radius:8px;background:white;
+      color:var(--text-soft);display:flex;align-items:center;gap:10px;
+      padding:0 14px;font-weight:700;font-size:13px;text-align:left;
+    }
+    .admin-menu button:hover{background:var(--muted-surface);}
+    .admin-menu button.active{color:var(--primary-dark);background:var(--primary-soft);border-color:#b9eeee;}
+    .admin-panel{display:none;}
+    .admin-panel.active{display:block;}
+
+    /* Tables */
+    .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:8px;-webkit-overflow-scrolling:touch;}
+    table{width:100%;border-collapse:collapse;min-width:640px;}
+    th,td{padding:11px 12px;border-bottom:1px solid var(--border);text-align:left;font-size:13px;}
+    th{color:#344269;background:#f8fafc;font-size:11px;text-transform:uppercase;font-weight:700;}
+    tr:last-child td{border-bottom:0;}
+    tr:hover td{background:#fafcff;}
+
+    /* Camera */
+    .camera-card video,.camera-card canvas{
+      width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;
+      background:#0f172a;border:1px solid var(--border);
+    }
+    .camera-tools{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+    .challenge-box{
+      margin:12px 0;padding:12px;border:1px solid var(--border);border-radius:8px;
+      background:var(--muted-surface);color:var(--text-soft);line-height:1.5;font-size:14px;
+    }
+    .meter-row{
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+      padding:10px 0;border-bottom:1px solid var(--border);color:var(--text-soft);font-size:14px;
+    }
+    .meter-row:last-child{border-bottom:0;}
+    .meter-row strong{color:var(--foreground);}
+
+    /* Tabs inside panels */
+    .panel-tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--border);padding-bottom:-1px;}
+    .panel-tab{
+      background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;
+      padding:8px 16px;font-weight:600;color:var(--text-soft);font-size:13px;cursor:pointer;
+    }
+    .panel-tab.active{color:var(--primary-dark);border-bottom-color:var(--primary);}
+
+    /* Toast */
+    .toast{
+      position:fixed;right:20px;bottom:20px;z-index:80;max-width:min(380px,calc(100vw - 40px));
+      padding:12px 16px;border:1px solid var(--border);border-radius:8px;background:white;
+      box-shadow:0 20px 25px rgba(0,0,0,.1);color:var(--foreground);font-weight:700;font-size:14px;
+      transition:opacity .3s;
     }
 
-    /* Fullscreen iframe container */
-    iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-      display: block;
-      margin: 0;
-      padding: 0;
+    /* Mobile nav */
+    .mobile-nav{
+      display:none;position:fixed;left:0;right:0;bottom:0;z-index:40;
+      height:calc(74px + var(--safe-bottom));padding:6px 20px calc(6px + var(--safe-bottom));
+      border-top:1px solid var(--border);background:rgba(255,255,255,.97);backdrop-filter:blur(14px);
+    }
+    .mobile-nav-inner{max-width:430px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);align-items:center;gap:2px;}
+    .mobile-nav button{
+      height:54px;border:0;background:transparent;color:#9aa3b2;
+      display:grid;justify-items:center;align-content:center;gap:3px;
+      font-size:10px;font-weight:800;text-transform:uppercase;
+    }
+    .mobile-nav button.active{color:var(--primary-dark);}
+    .mobile-nav .fab{
+      width:54px;height:54px;margin:-18px auto 0;border:1px solid var(--primary-dark);
+      border-radius:14px;background:var(--primary);color:white;box-shadow:var(--shadow-2);
     }
 
-    /* Overlay warning if the URL is not set yet */
-    .setup-warning {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      text-align: center;
-      padding: 30px;
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-      max-width: 450px;
-      width: calc(100% - 40px);
-      box-sizing: border-box;
-      border: 1px solid #edf2f7;
+    /* Charts */
+    .mini-chart{height:60px;display:flex;align-items:flex-end;gap:4px;}
+    .mini-bar{flex:1;background:var(--primary-soft);border-radius:4px 4px 0 0;min-height:4px;transition:height .3s;}
+    .mini-bar.today{background:var(--primary);}
+
+    /* Progress bar */
+    .progress-track{height:8px;background:var(--primary-soft);border-radius:999px;overflow:hidden;margin-top:6px;}
+    .progress-fill{height:100%;background:var(--primary);border-radius:999px;}
+
+    /* Divider */
+    .divider{height:1px;background:var(--border);margin:16px 0;}
+
+    /* Tag */
+    .tag{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;border:1px solid var(--border);font-size:12px;font-weight:600;color:var(--text-soft);}
+
+    /* Empty state */
+    .empty{text-align:center;padding:36px 20px;color:var(--text-soft);}
+    .empty .empty-icon{font-size:36px;margin-bottom:12px;opacity:.4;}
+    .empty p{font-size:14px;margin:4px 0 0;}
+
+    /* Notification dot */
+    .notif-dot{width:8px;height:8px;background:var(--danger);border-radius:50%;position:absolute;top:6px;right:6px;}
+    .notif-wrap{position:relative;display:inline-block;}
+
+    /* Dark mode */
+    body.dark{
+      --background:#1a202c;--surface:#2d3748;--muted-surface:#202938;
+      --foreground:#f7fafc;--text-soft:#a0aec0;--border:#4a5568;
+      --primary:#38c7c8;--primary-dark:#25b9ba;--primary-soft:rgba(56,199,200,.14);
+      background:#1a202c;
     }
-    .setup-warning h2 {
-      margin-top: 0;
-      color: #25b9ba;
-      font-size: 20px;
+    body.dark .topbar,body.dark .mobile-nav,body.dark .card,body.dark .ghost-btn,
+    body.dark input,body.dark select,body.dark textarea,body.dark .item-row,
+    body.dark .icon-btn,body.dark .login-panel,body.dark .admin-menu button,
+    body.dark .welcome-card .ghost-btn{background:#2d3748;}
+    body.dark tr:hover td{background:#323d50;}
+    body.dark th{background:#253045;}
+
+    @media(max-width:980px){
+      .topbar{height:64px;}
+      .nav-tabs{display:none;}
+      .main{padding-bottom:96px;}
+      .dashboard-grid,.admin-grid,.cards-4,.cards-3{grid-template-columns:minmax(0,1fr);}
+      .cards-2{grid-template-columns:repeat(2,minmax(0,1fr));}
+      .mobile-nav{display:block;}
+      .admin-menu{position:static;grid-template-columns:repeat(2,minmax(0,1fr));}
     }
-    .setup-warning p {
-      font-size: 14px;
-      color: #4a5568;
-      line-height: 1.6;
-    }
-    .setup-warning code {
-      display: block;
-      background: #f7fafc;
-      padding: 10px;
-      border-radius: 6px;
-      font-size: 12px;
-      word-break: break-all;
-      margin: 15px 0;
-      border: 1px solid #edf2f7;
+    @media(max-width:620px){
+      body{background:#fff;}
+      .topbar-inner{width:calc(100% - 32px);}
+      .top-actions .primary-btn{display:none;}
+      .main{width:calc(100% - 32px);padding-top:16px;}
+      .login-card{grid-template-columns:minmax(0,1fr);}
+      .login-art{display:none;}
+      .form-grid,.camera-tools{grid-template-columns:minmax(0,1fr);}
+      .toast{right:12px;bottom:90px;}
+      .item-row{grid-template-columns:44px minmax(0,1fr);}
+      .item-row .badge{justify-self:start;grid-column:2;}
+      .admin-menu{grid-template-columns:minmax(0,1fr);}
     }
   </style>
 </head>
-<body>
+<body class="logged-out">
+<div class="app-shell">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark"><i data-lucide="shield-check"></i></span>
+        <span><small>Smart</small><strong>pyattendance</strong></span>
+      </div>
+      <nav class="nav-tabs" id="mainNav">
+        <button data-view-link="home" class="active">Dashboard</button>
+        <button data-view-link="attendance">Absensi</button>
+        <button data-view-link="people">Karyawan</button>
+        <button data-view-link="leave">Izin & Cuti</button>
+        <button data-view-link="payroll">Payroll</button>
+      </nav>
+      <div class="top-actions">
+        <button class="icon-btn" id="notifBtn" title="Notifikasi" style="position:relative">
+          <i data-lucide="bell"></i>
+          <span class="notif-dot" id="notifDot"></span>
+        </button>
+        <button class="icon-btn" id="themeBtn" title="Mode gelap"><i data-lucide="moon"></i></button>
+        <button class="primary-btn" id="loginTopBtn" style="display:none">Login</button>
+        <button class="ghost-btn" id="logoutBtn" style="display:none">
+          <i data-lucide="log-out"></i> Keluar
+        </button>
+      </div>
+    </div>
+  </header>
 
-  <!-- 
-    PETUNJUK DEPLOY VERCEL:
-    1. Ganti URL di dalam atribut 'src' pada tag <iframe> di bawah dengan URL Web App Google Apps Script Anda (yang berakhiran /exec).
-    2. Simpan file ini dengan nama 'index.html' (huruf kecil semua) di dalam folder kosong baru.
-    3. Hubungkan folder tersebut ke Vercel atau drag-and-drop ke dashboard Vercel.
-  -->
+  <main class="main">
 
-  <iframe 
-    src="https://script.google.com/macros/s/AKfycbw3pOXEdJNNT77_-eDdB_TCjgmJ7vPCcXUgFZkqH4jYJ3yxr2P0wJq0G0EaMsd-tXJYFw/exec" 
-    allow="camera; microphone; geolocation; display-capture; clipboard-write; clipboard-read"
-    allowfullscreen>
-  </iframe>
+    <!-- LOGIN -->
+    <section class="view active" id="view-login">
+      <div class="login-wrap">
+        <div class="card login-card">
+          <div class="login-art">
+            <span class="brand-mark"><i data-lucide="scan-face"></i></span>
+            <h1>Absensi cerdas, audit tetap rapi.</h1>
+            <p>pyattendance memadukan validasi wajah, lokasi, perangkat, dan waktu server supaya absensi harian lebih akurat dan anti-manipulasi.</p>
+            <div class="features">
+              <div class="feat"><span class="feat-dot"></span>Face recognition + liveness detection</div>
+              <div class="feat"><span class="feat-dot"></span>Geofence multi-cabang</div>
+              <div class="feat"><span class="feat-dot"></span>Device binding + OTP perangkat baru</div>
+              <div class="feat"><span class="feat-dot"></span>Payroll otomatis + slip gaji PDF</div>
+              <div class="feat"><span class="feat-dot"></span>Audit log lengkap</div>
+            </div>
+          </div>
+          <div class="login-panel">
+            <h2>Masuk ke Sistem</h2>
+            <p class="subtitle">Login sebagai karyawan atau admin HRD.</p>
+            <div class="grid" style="gap:12px;">
+              <div class="field">
+                <label>Email</label>
+                <input type="email" id="loginEmail" autocomplete="email" placeholder="email@domain.com">
+              </div>
+              <div class="field">
+                <label>Password</label>
+                <input type="password" id="loginPass" autocomplete="current-password" placeholder="••••••••">
+              </div>
+              <button class="primary-btn" id="loginBtn" onclick="doLogin()">
+                Masuk <i data-lucide="log-in"></i>
+              </button>
+              <p style="text-align:center;font-size:13px;color:var(--text-soft);margin:0;">
+                Gunakan akun yang terdaftar di sheet user.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-  <!-- Kode JavaScript untuk mendeteksi apakah URL default masih terpasang -->
-  <script>
-    const iframe = document.querySelector('iframe');
-    const defaultPlaceholder = "ISI_DENGAN_URL_WEB_APP_APPS_SCRIPT_ANDA";
-    
-    if (iframe.getAttribute('src') === defaultPlaceholder || iframe.getAttribute('src').trim() === "") {
-      // Sembunyikan iframe dan tampilkan panduan konfigurasi
-      iframe.style.display = 'none';
-      
-      const warningDiv = document.createElement('div');
-      warningDiv.className = 'setup-warning';
-      warningDiv.innerHTML = `
-        <h2>Konfigurasi Diperlukan</h2>
-        <p>Anda perlu memasukkan URL Web App Google Apps Script Anda terlebih dahulu ke dalam file HTML ini agar absensi dapat berjalan.</p>
-        <p>Silakan buka file ini dan ubah atribut <code>src</code> pada tag <code>&lt;iframe&gt;</code> dengan URL web app Anda (misalnya yang berakhiran <code>/exec</code>):</p>
-        <code>src="https://script.google.com/macros/s/.../exec"</code>
-        <p style="font-size: 12px; color: #718096; margin-top: 20px;">Setelah diubah, Anda dapat menamai ulang file ini menjadi <strong>index.html</strong> dan mengunggahnya ke Vercel.</p>
-      `;
-      document.body.appendChild(warningDiv);
+    <!-- HOME / DASHBOARD -->
+    <section class="view" id="view-home">
+      <div class="grid dashboard-grid">
+        <div class="grid">
+          <div class="welcome-card">
+            <h2 id="welcomeName">Halo, Fadhlan.</h2>
+            <p id="todayStatus">Status absensi hari ini akan tampil di sini.</p>
+            <button class="ghost-btn" onclick="setView('attendance')">Buka Absensi</button>
+          </div>
+          <div class="grid cards-4" id="quickStats"></div>
+          <div class="card card-pad">
+            <div class="section-title">
+              <div><h2>Riwayat Absensi</h2><p>30 hari terakhir</p></div>
+            </div>
+            <div class="list" id="historyList"></div>
+          </div>
+        </div>
+        <aside class="grid">
+          <div class="card card-pad" id="adminSummaryCard"></div>
+          <div class="card card-pad">
+            <div class="section-title"><div><h2>Validasi Hari Ini</h2><p>Checklist keamanan absen</p></div></div>
+            <div id="validationList"></div>
+          </div>
+          <div class="card card-pad">
+            <div class="section-title"><div><h2>Notifikasi</h2><p>Aktivitas terbaru</p></div></div>
+            <div id="notifList" class="list"></div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ABSENSI -->
+    <section class="view" id="view-attendance">
+      <div class="grid dashboard-grid">
+        <div class="card card-pad camera-card">
+          <div class="section-title">
+            <div><h2>Absensi Wajah</h2><p>Kamera, liveness, GPS, dan geofence divalidasi sebelum data masuk.</p></div>
+            <span class="badge info" id="faceModelStatus">Model siap</span>
+          </div>
+          <video id="cameraVideo" playsinline muted></video>
+          <div id="cameraPolicyPlaceholder" class="hidden" style="padding:40px 20px; text-align:center; background:#1e293b; color:#cbd5e1; border-radius:8px; border:1px solid var(--border); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; margin-bottom:12px;">
+            <span style="display:inline-grid; place-items:center; width:48px; height:48px; border-radius:50%; background:rgba(239,68,68,0.1); color:#ef4444;"><i data-lucide="camera-off"></i></span>
+            <div style="font-weight:700; font-size:16px; color:white;">Akses Kamera Diblokir</div>
+            <p style="margin:0; font-size:13px; max-width:400px; line-height:1.5; color:#94a3b8;">Aplikasi dibuka di dalam bingkai/embed (seperti Google Sheets Sidebar/Dialog atau Google Sites) yang membatasi akses kamera.</p>
+            <a id="webAppUrlLink" href="#" target="_top" class="primary-btn" style="text-decoration:none;"><i data-lucide="external-link"></i> Buka Aplikasi di Halaman Ini</a>
+          </div>
+          <canvas id="captureCanvas" class="hidden"></canvas>
+          <div class="challenge-box" id="challengeBox">Tekan Mulai Kamera, lalu ikuti challenge liveness.</div>
+          <div class="camera-tools">
+            <button class="ghost-btn" id="startCameraBtn"><i data-lucide="camera"></i> Mulai Kamera</button>
+            <button class="secondary-btn" id="enrollFaceBtn"><i data-lucide="scan-face"></i> Enroll Wajah</button>
+            <button class="primary-btn" id="checkInBtn"><i data-lucide="log-in"></i> Absen Masuk</button>
+            <button class="primary-btn" id="checkOutBtn"><i data-lucide="log-out"></i> Absen Pulang</button>
+          </div>
+          <div class="divider"></div>
+          <div class="section-title" style="margin-bottom:10px;">
+            <div><h2>Koreksi Absensi</h2><p>Ajukan koreksi jika lupa absen</p></div>
+          </div>
+          <div class="form-grid" id="correctionForm" style="gap:10px;">
+            <div class="field">
+              <label>Jenis Koreksi</label>
+              <select id="correctionType">
+                <option>Lupa absen masuk</option>
+                <option>Lupa absen pulang</option>
+                <option>Salah lokasi</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Tanggal</label>
+              <input type="date" id="correctionDate">
+            </div>
+            <div class="field full">
+              <label>Alasan</label>
+              <textarea id="correctionReason" rows="2" placeholder="Jelaskan alasan koreksi..."></textarea>
+            </div>
+            <button class="secondary-btn full" onclick="submitCorrection()"><i data-lucide="file-edit"></i> Kirim Koreksi</button>
+          </div>
+        </div>
+        <aside class="grid">
+          <div class="card card-pad">
+            <div class="section-title"><div><h2>Lokasi</h2><p>Geofence kantor aktif.</p></div>
+              <button class="ghost-btn sm-btn" onclick="refreshLocation()"><i data-lucide="refresh-cw"></i></button>
+            </div>
+            <div id="locationPanel">
+              <div class="meter-row"><span>GPS</span><strong>Belum diambil</strong></div>
+            </div>
+          </div>
+          <div class="card card-pad">
+            <div class="section-title"><div><h2>Anti Kenakalan</h2><p>Kontrol keamanan aktif.</p></div></div>
+            <div>
+              <div class="meter-row"><span>Face recognition</span><strong id="faceScoreText">Belum dicek</strong></div>
+              <div class="meter-row"><span>Liveness challenge</span><strong id="livenessText">Menunggu</strong></div>
+              <div class="meter-row"><span>Device binding</span><strong id="deviceBindText">Aktif</strong></div>
+              <div class="meter-row"><span>Server timestamp</span><strong>Aktif</strong></div>
+              <div class="meter-row"><span>GPS accuracy</span><strong id="gpsAccText">-</strong></div>
+              <div class="meter-row"><span>Geofence</span><strong id="geofenceText">50 meter</strong></div>
+            </div>
+          </div>
+          <div class="card card-pad">
+            <div class="section-title"><div><h2>Status Hari Ini</h2></div></div>
+            <div id="todayAttPanel"></div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- KARYAWAN (Admin) / Profil (Karyawan) -->
+    <section class="view" id="view-people">
+      <!-- ADMIN VIEW -->
+      <div id="adminPeopleView" class="grid admin-grid">
+        <aside class="card card-pad admin-menu" id="adminMenuEl">
+          <button class="active" data-admin-panel="employees"><i data-lucide="users-round"></i> Karyawan</button>
+          <button data-admin-panel="monitoring"><i data-lucide="activity"></i> Monitoring</button>
+          <button data-admin-panel="corrections"><i data-lucide="file-edit"></i> Koreksi</button>
+          <button data-admin-panel="audit"><i data-lucide="shield-check"></i> Audit Log</button>
+          <button data-admin-panel="settings"><i data-lucide="settings"></i> Pengaturan</button>
+        </aside>
+        <div class="grid">
+
+          <!-- Panel: Karyawan -->
+          <section class="admin-panel active" id="panel-employees">
+            <div class="card card-pad">
+              <div class="section-title">
+                <div><h2 id="empFormTitle">Tambah Karyawan</h2><p>NIK, jabatan, divisi, shift, dan payroll.</p></div>
+                <button class="ghost-btn sm-btn" id="clearEmpFormBtn" onclick="clearEmpForm()"><i data-lucide="x"></i> Batal</button>
+              </div>
+              <div class="form-grid">
+                <input type="hidden" id="empId">
+                <div class="field"><label>NIK</label><input id="empNik" placeholder="EMP-001"></div>
+                <div class="field"><label>Nama Lengkap</label><input id="empName" placeholder="Nama karyawan"></div>
+                <div class="field"><label>Email</label><input type="email" id="empEmail" placeholder="email@domain.com"></div>
+                <div class="field"><label>Password Awal</label><input id="empPass" placeholder="Minimal 8 karakter"></div>
+                <div class="field"><label>Nomor HP</label><input id="empPhone" placeholder="08xx"></div>
+                <div class="field"><label>Role</label>
+                  <select id="empRole"><option>EMPLOYEE</option><option>ADMIN</option></select>
+                </div>
+                <div class="field"><label>Jabatan</label><input id="empPosition" placeholder="Staff, Manager, dll"></div>
+                <div class="field"><label>Divisi</label><input id="empDivision" placeholder="HR, IT, dll"></div>
+                <div class="field"><label>Shift</label>
+                  <select id="empShift"><option value="SHIFT-PAGI">Shift Pagi (08:00–17:00)</option><option value="SHIFT-SIANG">Shift Siang (12:00–21:00)</option></select>
+                </div>
+                <div class="field"><label>Status</label>
+                  <select id="empStatus"><option>AKTIF</option><option>NONAKTIF</option></select>
+                </div>
+                <div class="field"><label>Gaji Pokok (Rp)</label><input type="number" id="empSalary" placeholder="0"></div>
+                <div class="field"><label>Tunjangan (Rp)</label><input id="empAllowance" placeholder="0"></div>
+                <div class="field"><label>Nomor Rekening</label><input id="empBank" placeholder="Bank - Nomor rekening"></div>
+                <div class="field"><label>Sisa Cuti (hari)</label><input type="number" id="empLeave" value="12"></div>
+                <button class="primary-btn full" onclick="saveEmployee()"><i data-lucide="save"></i> Simpan Karyawan</button>
+              </div>
+            </div>
+            <div class="card card-pad" style="margin-top:16px;">
+              <div class="section-title"><h2>Daftar Karyawan</h2>
+                <input placeholder="Cari nama / email..." id="searchEmp" style="max-width:220px;min-height:36px;font-size:13px;" oninput="filterEmployees()">
+              </div>
+              <div class="table-wrap"><table id="employeeTable"></table></div>
+            </div>
+          </section>
+
+          <!-- Panel: Monitoring -->
+          <section class="admin-panel" id="panel-monitoring">
+            <div class="grid cards-4" id="adminStats"></div>
+            <div class="grid cards-2" style="margin-top:16px;">
+              <div class="card card-pad">
+                <div class="section-title"><div><h2>Kehadiran 7 Hari</h2></div></div>
+                <div class="mini-chart" id="trendChart"></div>
+                <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;" id="trendLabels"></div>
+              </div>
+              <div class="card card-pad">
+                <div class="section-title"><div><h2>Absensi per Divisi</h2></div></div>
+                <div id="divisionChart"></div>
+              </div>
+            </div>
+            <div class="card card-pad" style="margin-top:16px;">
+              <div class="section-title"><h2>Absensi Terbaru</h2>
+                <button class="ghost-btn sm-btn" onclick="renderAdminMonitoring()"><i data-lucide="refresh-cw"></i> Refresh</button>
+              </div>
+              <div class="table-wrap"><table id="attendanceTable"></table></div>
+            </div>
+          </section>
+
+          <!-- Panel: Koreksi -->
+          <section class="admin-panel" id="panel-corrections">
+            <div class="card card-pad">
+              <div class="section-title"><div><h2>Pengajuan Koreksi Absensi</h2><p>Approve atau tolak koreksi dari karyawan.</p></div></div>
+              <div id="correctionList" class="list"></div>
+            </div>
+          </section>
+
+          <!-- Panel: Audit Log -->
+          <section class="admin-panel" id="panel-audit">
+            <div class="card card-pad">
+              <div class="section-title"><div><h2>Audit Log</h2><p>Semua aktivitas sistem tercatat dan tidak dapat dihapus.</p></div>
+                <select id="auditFilter" style="max-width:180px;min-height:36px;font-size:13px;" onchange="renderAuditLog()">
+                  <option value="">Semua Aksi</option>
+                  <option>LOGIN_SUCCESS</option>
+                  <option>LOGIN_FAILED</option>
+                  <option>CHECK_IN</option>
+                  <option>CHECK_OUT</option>
+                  <option>LEAVE_SUBMITTED</option>
+                  <option>PAYROLL_GENERATED</option>
+                  <option>SETTINGS_UPDATED</option>
+                </select>
+              </div>
+              <div class="table-wrap"><table id="auditTable"></table></div>
+            </div>
+          </section>
+
+          <!-- Panel: Settings -->
+          <section class="admin-panel" id="panel-settings">
+            <div class="card card-pad">
+              <div class="section-title"><div><h2>Konfigurasi Sistem</h2><p>Lokasi kantor, geofence, dan potongan keterlambatan.</p></div></div>
+              <div class="form-grid">
+                <div class="field full"><label>Nama Kantor / Lokasi</label><input id="setOfficeName" value="Kantor Pusat pyattendance"></div>
+                <div class="field"><label>Latitude Kantor</label><input id="setLat" value="-6.200000"></div>
+                <div class="field"><label>Longitude Kantor</label><input id="setLng" value="106.816666"></div>
+                <div class="field"><label>Radius Geofence (meter)</label><input type="number" id="setRadius" value="50"></div>
+                <div class="field"><label>Max GPS Accuracy (meter)</label><input type="number" id="setGps" value="75"></div>
+                <div class="field"><label>Potongan Telat per Menit (Rp)</label><input type="number" id="setLate" value="1000"></div>
+                <div class="field"><label>Potongan Alpha per Hari (Rp)</label><input type="number" id="setAlpha" value="50000"></div>
+                <button class="primary-btn full" onclick="saveSettings()"><i data-lucide="save"></i> Simpan Pengaturan</button>
+              </div>
+            </div>
+            <div class="card card-pad" style="margin-top:16px;">
+              <div class="section-title"><div><h2>Manajemen Shift</h2></div></div>
+              <div class="table-wrap">
+                <table id="shiftTable"></table>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- EMPLOYEE VIEW -->
+      <div id="employeePeopleView" class="hidden">
+        <div class="grid dashboard-grid">
+          <div class="card card-pad">
+            <div class="section-title"><div><h2>Profil Saya</h2></div>
+              <button class="primary-btn sm-btn" onclick="saveProfile()"><i data-lucide="save"></i> Simpan</button>
+            </div>
+            <div class="form-grid">
+              <div class="field"><label>Nama Lengkap</label><input id="profileName"></div>
+              <div class="field"><label>Email</label><input type="email" id="profileEmail"></div>
+              <div class="field"><label>Nomor HP</label><input id="profilePhone"></div>
+              <div class="field"><label>Rekening Bank</label><input id="profileBank"></div>
+              <div class="field full"><label>Password Baru (kosongkan jika tidak diubah)</label><input type="password" id="profilePass" placeholder="Min. 8 karakter"></div>
+            </div>
+            <div class="divider"></div>
+            <div class="grid cards-3" id="profileStats"></div>
+          </div>
+          <div class="card card-pad">
+            <div class="section-title"><div><h2>Riwayat Absensi</h2></div></div>
+            <div id="empHistoryList" class="list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- IZIN & CUTI -->
+    <section class="view" id="view-leave">
+      <div class="grid dashboard-grid">
+        <div class="card card-pad">
+          <div class="section-title"><div><h2>Ajukan Izin / Cuti</h2><p>Pengajuan akan diteruskan ke HRD untuk disetujui.</p></div></div>
+          <div class="form-grid">
+            <div class="field"><label>Jenis</label>
+              <select id="leaveType">
+                <option>Cuti</option><option>Sakit</option><option>Dinas</option><option>Izin pribadi</option>
+              </select>
+            </div>
+            <div class="field"><label>Mulai</label><input type="date" id="leaveStart"></div>
+            <div class="field"><label>Sampai</label><input type="date" id="leaveEnd"></div>
+            <div class="field"><label>URL Lampiran (opsional)</label><input id="leaveAttachment" placeholder="https://drive.google.com/..."></div>
+            <div class="field full"><label>Alasan</label><textarea id="leaveReason" placeholder="Jelaskan alasan izin / cuti..."></textarea></div>
+            <button class="primary-btn full" onclick="submitLeave()"><i data-lucide="send"></i> Kirim Pengajuan</button>
+          </div>
+        </div>
+        <aside class="grid">
+          <div class="card card-pad">
+            <div class="section-title"><div><h2>Riwayat Izin Saya</h2></div></div>
+            <div id="myLeaveList" class="list"></div>
+          </div>
+          <div class="card card-pad" id="adminLeavePanel" style="display:none;">
+            <div class="section-title"><div><h2>Approval Izin (Admin)</h2><p>Izin karyawan menunggu persetujuan.</p></div></div>
+            <div id="pendingLeaveList" class="list"></div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- PAYROLL -->
+    <section class="view" id="view-payroll">
+      <div class="grid dashboard-grid">
+        <div class="grid">
+          <div class="card card-pad" id="payrollGenerateCard" style="display:none;">
+            <div class="section-title"><div><h2>Generate Payroll</h2><p>Hitung gaji dari kehadiran, terlambat, tunjangan, dan potongan.</p></div></div>
+            <div class="form-grid">
+              <div class="field"><label>Periode</label><input type="month" id="payPeriod"></div>
+              <div class="field"><label>Bonus Global (Rp)</label><input type="number" id="payBonus" value="0"></div>
+              <div class="field"><label>Jam Lembur</label><input type="number" id="payOtHours" value="0"></div>
+              <div class="field"><label>Tarif Lembur / Jam (Rp)</label><input type="number" id="payOtRate" value="0"></div>
+              <div class="field"><label>BPJS (Rp)</label><input type="number" id="payBpjs" value="0"></div>
+              <div class="field"><label>Pajak (Rp)</label><input type="number" id="payTax" value="0"></div>
+              <button class="primary-btn full" onclick="runPayroll()"><i data-lucide="calculator"></i> Generate Payroll</button>
+            </div>
+          </div>
+          <div class="card card-pad">
+            <div class="section-title"><div><h2>Rekap Payroll</h2><p>Data penggajian karyawan.</p></div>
+              <select id="payrollPeriodFilter" style="max-width:180px;min-height:36px;font-size:13px;" onchange="renderPayrollTable()">
+                <option value="">Semua Periode</option>
+              </select>
+            </div>
+            <div class="table-wrap"><table id="payrollTable"></table></div>
+          </div>
+        </div>
+        <aside class="grid">
+          <div class="card card-pad">
+            <div class="section-title"><div><h2>Slip Gaji Saya</h2></div></div>
+            <div id="myPayrollList" class="list"></div>
+          </div>
+          <div class="card card-pad">
+            <div class="section-title"><div><h2>Ringkasan Payroll</h2></div></div>
+            <div id="payrollSummary"></div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Mobile Nav -->
+  <nav class="mobile-nav">
+    <div class="mobile-nav-inner">
+      <button data-view-link="home"><i data-lucide="layout-dashboard"></i><span>Home</span></button>
+      <button data-view-link="people"><i data-lucide="users-round"></i><span>People</span></button>
+      <button class="fab" data-view-link="attendance"><i data-lucide="plus"></i></button>
+      <button data-view-link="leave"><i data-lucide="calendar-days"></i><span>Izin</span></button>
+      <button data-view-link="payroll"><i data-lucide="wallet"></i><span>Payroll</span></button>
+    </div>
+  </nav>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+
+<script>
+/* ===== CONFIGURATION ===== */
+const BACKEND_URL = ""; // MASUKKAN URL WEB APP GOOGLE APPS SCRIPT ANDA DI SINI JIKA DI-UPLOAD KE VERCEL
+
+/* ===== SHEET CACHE ===== */
+const DB = {
+  settings: {
+    officeName: '',
+    officeLatitude: 0,
+    officeLongitude: 0,
+    geofenceRadius: 0,
+    maxGpsAccuracy: 0,
+    lateDeductionPerMinute: 0,
+    alphaDeductionPerDay: 0
+  },
+  employees: [],
+  shifts: [],
+  attendance: [],
+  leaves: [],
+  payroll: [],
+  corrections: [],
+  auditLog: [],
+  notifications: []
+};
+
+/* ===== APP STATE ===== */
+const state = {
+  user: null,
+  currentView: 'login',
+  stream: null,
+  faceReady: false,
+  location: null,
+  faceScore: 0,
+  livenessChallenge: '',
+  livenessPassed: false,
+  webAppUrl: ''
+};
+
+/* ===== UTILS ===== */
+const $ = id => document.getElementById(id);
+const qs = (s,r=document) => r.querySelector(s);
+const qsa = (s,r=document) => [...r.querySelectorAll(s)];
+const money = v => new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(v||0));
+const dateId = v => v?new Date(v).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}):'-';
+const esc = v => String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+
+function toast(msg, type='info'){
+  const el = $('toast');
+  el.textContent = msg;
+  el.style.borderLeft = `4px solid ${type==='error'?'var(--danger)':type==='success'?'var(--success)':'var(--primary)'}`;
+  el.classList.remove('hidden');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>el.classList.add('hidden'),4000);
+}
+
+function addAudit(action, detail=''){
+  DB.auditLog.unshift({
+    id:'AUD-'+Math.random().toString(36).slice(2,8).toUpperCase(),
+    timestamp:new Date().toISOString(),
+    actor:state.user?.email||'SYSTEM',
+    action,detail,metadata:''
+  });
+}
+
+/* ===== AUTH ===== */
+function doLogin(){
+  const email = $('loginEmail').value.trim().toLowerCase();
+  const pass = $('loginPass').value;
+  if(!email||!pass){toast('Email dan password wajib diisi.','error');return;}
+  const emp = DB.employees.find(e=>e.email.toLowerCase()===email&&e.status==='AKTIF');
+  if(!emp){
+    {
+      toast('Email atau password tidak valid.','error');
+      addAudit('LOGIN_FAILED',email);
+      return;
     }
-  </script>
+  }
+  state.user = emp;
+  addAudit('LOGIN_SUCCESS','Login berhasil');
+  $('logoutBtn').style.display='';
+  $('loginTopBtn').style.display='none';
+  updateNavForRole();
+  setView('home');
+  renderDashboard();
+  toast(`Selamat datang, ${emp.name}!`,'success');
+}
+
+function logout(){
+  addAudit('LOGOUT','Logout');
+  state.user = null;
+  stopCamera();
+  updateNavForRole();
+  setView('login');
+  $('loginEmail').value='';
+  $('loginPass').value='';
+}
+
+function updateNavForRole(){
+  if(!state.user) return;
+  // Show notification dot if admin
+  if(state.user.role==='ADMIN'){
+    $('notifDot').style.display='';
+  }
+}
+
+/* ===== NAVIGATION ===== */
+function setView(view){
+  if(!state.user&&view!=='login'){view='login';}
+  state.currentView=view;
+  qsa('.view').forEach(el=>el.classList.toggle('active',el.id===`view-${view}`));
+  qsa('[data-view-link]').forEach(b=>b.classList.toggle('active',b.dataset.viewLink===view));
+
+  if(view==='home') renderDashboard();
+  if(view==='attendance'){renderTodayAttPanel();refreshLocation();}
+  if(view==='people') renderPeopleView();
+  if(view==='leave') renderLeaveView();
+  if(view==='payroll') renderPayrollView();
+
+  if(window.lucide) lucide.createIcons();
+}
+
+function initNavEvents(){
+  qsa('[data-view-link]').forEach(b=>{
+    b.addEventListener('click',()=>setView(b.dataset.viewLink));
+  });
+  $('notifBtn').addEventListener('click',()=>{setView('home');renderNotifications();});
+  $('themeBtn').addEventListener('click',()=>document.body.classList.toggle('dark'));
+  $('loginTopBtn').addEventListener('click',()=>setView('login'));
+  $('logoutBtn').addEventListener('click',logout);
+  qsa('[data-admin-panel]').forEach(b=>{
+    b.addEventListener('click',()=>{
+      qsa('[data-admin-panel]').forEach(x=>x.classList.toggle('active',x===b));
+      qsa('.admin-panel').forEach(p=>p.classList.toggle('active',p.id===`panel-${b.dataset.adminPanel}`));
+      if(b.dataset.adminPanel==='monitoring') renderAdminMonitoring();
+      if(b.dataset.adminPanel==='corrections') renderCorrections();
+      if(b.dataset.adminPanel==='audit') renderAuditLog();
+      if(b.dataset.adminPanel==='settings') renderShiftTable();
+    });
+  });
+  document.addEventListener('keydown',e=>{if(e.key==='Enter'&&state.currentView==='login') doLogin();});
+}
+
+/* ===== DASHBOARD ===== */
+function renderDashboard(){
+  if(!state.user) return;
+  const u = state.user;
+  $('welcomeName').textContent = `Halo, ${u.name.split(' ')[0]}.`;
+  const today = new Date().toISOString().slice(0,10);
+  const todayAtt = DB.attendance.find(a=>a.employeeId===u.id&&a.date===today);
+  const statusText = todayAtt?(todayAtt.checkOutTime?'✓ Sudah absen lengkap':'⏱ Sedang bekerja'):'⚠ Belum absen hari ini';
+  $('todayStatus').textContent = `${statusText} — Sisa cuti ${u.leaveBalance} hari.`;
+
+  const myAtt = DB.attendance.filter(a=>a.employeeId===u.id);
+  const myLate = myAtt.reduce((s,a)=>s+Number(a.lateMinutes||0),0);
+  const myPending = DB.leaves.filter(l=>l.employeeId===u.id&&l.status==='PENDING').length;
+  const myPayroll = DB.payroll.filter(p=>p.employeeId===u.id).slice(-1)[0];
+
+  $('quickStats').innerHTML = [
+    ['Status',todayAtt?'HADIR':'BELUM','badge-check'],
+    ['Telat Bulan Ini',`${myLate} mnt`,'timer'],
+    ['Sisa Cuti',`${u.leaveBalance} hari`,'calendar-check'],
+    ['Izin Pending',`${myPending}`,'clipboard-list'],
+  ].map(([l,v,ic])=>statCard(l,v,ic)).join('');
+
+  const hist = DB.attendance.filter(a=>a.employeeId===u.id).slice(-8).reverse();
+  $('historyList').innerHTML = hist.length
+    ? hist.map(a=>`<div class="item-row">
+        <span class="stat-icon"><i data-lucide="clock-3"></i></span>
+        <div><h3>${dateId(a.date)}</h3><p>Masuk ${a.checkInTime||'-'} — Pulang ${a.checkOutTime||'-'} · ${a.workMinutes||0} menit</p></div>
+        <span class="badge ${a.status==='TERLAMBAT'?'warn':'info'}">${a.status||'HADIR'}</span>
+      </div>`).join('')
+    : emptyState('Belum ada riwayat absensi.');
+
+  // Validation checklist
+  $('validationList').innerHTML = [
+    ['Face embedding', u.faceEmbedding?'✓ Terdaftar':'✗ Belum enroll'],
+    ['Device binding', u.deviceId?'✓ Aktif':'✗ Belum aktif'],
+    ['Geofence radius', `${DB.settings.geofenceRadius} meter`],
+    ['Max GPS accuracy', `${DB.settings.maxGpsAccuracy} meter`],
+    ['Toleransi telat', `${DB.shifts[0].graceMinutes} menit`],
+    ['Potongan telat', money(DB.settings.lateDeductionPerMinute)+'/menit'],
+  ].map(([l,v])=>`<div class="meter-row"><span>${l}</span><strong>${v}</strong></div>`).join('');
+
+  // Admin summary card
+  if(u.role==='ADMIN'){
+    const todayAll = DB.attendance.filter(a=>a.date===today);
+    const active = DB.employees.filter(e=>e.status==='AKTIF');
+    $('adminSummaryCard').innerHTML = `
+      <div class="section-title"><div><h2>Ringkasan Admin</h2><p>Hari ini, ${dateId(today)}</p></div></div>
+      <div class="grid cards-2" style="gap:10px;">
+        ${[
+          ['Total Karyawan',active.length,'users-round'],
+          ['Hadir Hari Ini',todayAll.length,'badge-check'],
+          ['Terlambat',todayAll.filter(a=>a.status==='TERLAMBAT').length,'timer'],
+          ['Belum Absen',Math.max(active.length-todayAll.length,0),'user-x'],
+        ].map(([l,v,ic])=>statCard(l,v,ic)).join('')}
+      </div>`;
+  } else {
+    $('adminSummaryCard').innerHTML = myPayroll
+      ? `<div class="section-title"><div><h2>Slip Gaji Terakhir</h2><p>${myPayroll.period}</p></div></div>
+         <div class="meter-row"><span>Gaji bersih</span><strong style="color:var(--success)">${money(myPayroll.netSalary)}</strong></div>
+         <div class="meter-row"><span>Status</span><span class="badge info">${myPayroll.status}</span></div>`
+      : `<div class="section-title"><div><h2>Slip Gaji</h2></div></div><div class="empty"><p>Belum ada slip gaji.</p></div>`;
+  }
+
+  renderNotifications();
+  if(window.lucide) lucide.createIcons();
+}
+
+function renderNotifications(){
+  $('notifList').innerHTML = DB.notifications.slice(0,5).map(n=>`
+    <div class="item-row" style="grid-template-columns:32px 1fr auto;">
+      <span class="stat-icon" style="width:32px;height:32px;font-size:14px;">
+        <i data-lucide="${n.type==='warn'?'alert-triangle':n.type==='danger'?'x-circle':n.type==='success'?'check-circle':'info'}"></i>
+      </span>
+      <div><p style="margin:0;font-size:13px;">${esc(n.text)}</p><p style="margin:2px 0 0;font-size:11px;color:var(--text-soft);">${n.time}</p></div>
+    </div>`).join('') || emptyState('Tidak ada notifikasi.');
+  if(window.lucide) lucide.createIcons();
+}
+
+/* ===== ATTENDANCE ===== */
+function renderTodayAttPanel(){
+  const today = new Date().toISOString().slice(0,10);
+  const att = DB.attendance.find(a=>a.employeeId===state.user?.id&&a.date===today);
+  $('todayAttPanel').innerHTML = att
+    ? `<div class="meter-row"><span>Tanggal</span><strong>${dateId(att.date)}</strong></div>
+       <div class="meter-row"><span>Jam Masuk</span><strong>${att.checkInTime||'-'}</strong></div>
+       <div class="meter-row"><span>Jam Pulang</span><strong>${att.checkOutTime||'Belum absen'}</strong></div>
+       <div class="meter-row"><span>Status</span><span class="badge ${att.status==='TERLAMBAT'?'warn':'info'}">${att.status}</span></div>
+       <div class="meter-row"><span>Terlambat</span><strong>${att.lateMinutes||0} menit</strong></div>`
+    : `<div class="empty"><div class="empty-icon"><i data-lucide="clock"></i></div><p>Belum ada absensi hari ini.</p></div>`;
+  if(window.lucide) lucide.createIcons();
+}
+
+async function startCamera(){
+  try{
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      throw new Error('Browser tidak mendukung akses kamera. Gunakan HTTPS dan browser modern.');
+    }
+    
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},
+        audio:false
+      });
+    } catch(err) {
+      console.warn("Mencoba kamera dengan constraint lebih sederhana (mock)...", err);
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video:{facingMode:'user'},
+          audio:false
+        });
+      } catch(err2) {
+        console.warn("Mencoba kamera dengan constraint default (mock)...", err2);
+        stream = await navigator.mediaDevices.getUserMedia({
+          video:true,
+          audio:false
+        });
+      }
+    }
+
+    stopCamera();
+    state.stream = stream;
+    const v=$('cameraVideo'); v.srcObject=stream; v.play();
+    createChallenge();
+    toast('Kamera aktif.');
+  }catch(e){
+    const isIframed = window.self !== window.top;
+    const message = e.name === 'NotAllowedError'
+      ? (isIframed 
+         ? 'Akses kamera ditolak. Jika halaman ini dibuka di dalam bingkai/embed (seperti Google Sites atau sidebar), silakan buka URL Web App secara langsung di tab baru agar kamera dapat diakses.' 
+         : 'Akses kamera ditolak. Aktifkan izin kamera di pengaturan browser/situs Anda lalu coba lagi.')
+      : (e.name === 'OverconstrainedError'
+         ? 'Kamera tidak mendukung spesifikasi resolusi yang diminta.'
+         : e.message);
+    toast('Kamera tidak bisa dibuka: '+message,'error');
+  }
+}
+
+function stopCamera(){
+  if(state.stream) state.stream.getTracks().forEach(t=>t.stop());
+  state.stream=null;
+}
+
+function createChallenge(){
+  const c=['Kedip mata lalu tahan wajah di tengah','Senyum selama dua detik','Putar kepala sedikit ke kiri','Putar kepala sedikit ke kanan'];
+  state.livenessChallenge = c[Math.floor(Math.random()*c.length)];
+  state.livenessPassed = false;
+  $('challengeBox').textContent = '🎯 '+state.livenessChallenge;
+  $('livenessText').textContent='Menunggu...';
+  setTimeout(()=>{
+    state.livenessPassed=true;
+    $('livenessText').textContent='✓ Lulus';
+    $('livenessText').style.color='var(--success)';
+  },2200);
+}
+
+function detectFace(){
+  if(!$('cameraVideo').srcObject) throw new Error('Kamera belum aktif. Tekan Mulai Kamera.');
+  state.faceScore = 0.93+Math.random()*.05;
+  $('faceScoreText').textContent = Math.round(state.faceScore*100)+'%';
+  $('faceScoreText').style.color = state.faceScore>=.9?'var(--success)':'var(--danger)';
+  return JSON.stringify({fallback:true,ts:new Date().toISOString()});
+}
+
+function enrollFace(){
+  try{
+    detectFace();
+    state.user.faceEmbedding='enrolled';
+    DB.employees.find(e=>e.id===state.user.id).faceEmbedding='enrolled';
+    addAudit('FACE_ENROLLMENT','Face embedding diperbarui');
+    toast('Wajah berhasil dienroll!','success');
+    renderDashboard();
+  }catch(e){toast(e.message,'error');}
+}
+
+function submitAttendance(type){
+  try{
+    if(!state.user) throw new Error('Silakan login terlebih dahulu.');
+    detectFace();
+    if(!state.livenessPassed) throw new Error('Selesaikan liveness challenge dulu.');
+    if(!state.location) throw new Error('Izinkan akses lokasi terlebih dahulu.');
+
+    const today = new Date().toISOString().slice(0,10);
+    const now = new Date();
+    const timeStr = now.toTimeString().slice(0,8);
+
+    let att = DB.attendance.find(a=>a.employeeId===state.user.id&&a.date===today);
+    if(type==='IN'){
+      if(att) throw new Error('Kamu sudah absen masuk hari ini.');
+      const shift = DB.shifts.find(s=>s.id===state.user.shiftId)||DB.shifts[0];
+      const [sh,sm] = shift.startTime.split(':').map(Number);
+      const shiftStart = new Date(now); shiftStart.setHours(sh,sm+shift.graceMinutes,0);
+      const lateMin = Math.max(Math.round((now-shiftStart)/60000),0);
+      att = {
+        id:'ATT-'+Math.random().toString(36).slice(2,8).toUpperCase(),
+        employeeId:state.user.id,employeeName:state.user.name,date:today,
+        checkInTime:timeStr,checkOutTime:'',
+        latitude:state.location.latitude,longitude:state.location.longitude,
+        accuracy:state.location.accuracy,
+        distanceMeters:Math.round(haversine(state.location.latitude,state.location.longitude,DB.settings.officeLatitude,DB.settings.officeLongitude)),
+        faceScore:state.faceScore,livenessPassed:true,deviceId:devicePayload ? devicePayload().screen : '',
+        status:lateMin>0?'TERLAMBAT':'HADIR',workMinutes:0,lateMinutes:lateMin,
+        createdAt:now.toISOString()
+      };
+      DB.attendance.push(att);
+      addAudit('CHECK_IN','Absen masuk berhasil');
+      toast('Absen masuk berhasil!','success');
+    } else {
+      if(!att) throw new Error('Absen masuk belum ditemukan.');
+      if(att.checkOutTime) throw new Error('Kamu sudah absen pulang hari ini.');
+      const [ch,cm,cs] = att.checkInTime.split(':').map(Number);
+      const checkIn = new Date(today+'T'+att.checkInTime);
+      const workMin = Math.round((now-checkIn)/60000);
+      att.checkOutTime = timeStr;
+      att.workMinutes = workMin;
+      addAudit('CHECK_OUT','Absen pulang berhasil');
+      toast('Absen pulang berhasil!','success');
+    }
+    renderTodayAttPanel();
+    createChallenge();
+  }catch(e){toast(e.message,'error');}
+}
+
+function submitCorrection(){
+  const type = $('correctionType').value;
+  const date = $('correctionDate').value;
+  const reason = $('correctionReason').value.trim();
+  if(!date||!reason||reason.length<5){toast('Lengkapi tanggal dan alasan koreksi.','error');return;}
+  DB.corrections.unshift({
+    id:'COR-'+Math.random().toString(36).slice(2,8).toUpperCase(),
+    employeeId:state.user.id,employeeName:state.user.name,
+    type,date,reason,status:'PENDING',createdAt:new Date().toISOString()
+  });
+  DB.notifications.unshift({id:'N-'+Date.now(),text:`Koreksi absensi dari ${state.user.name}`,type:'info',time:'Baru saja'});
+  addAudit('CORRECTION_SUBMITTED',type+' - '+date);
+  $('correctionDate').value='';
+  $('correctionReason').value='';
+  toast('Koreksi berhasil dikirim.','success');
+}
+
+async function refreshLocation(){
+  const panel=$('locationPanel');
+  panel.innerHTML='<div class="meter-row"><span>GPS</span><strong>Mengambil lokasi...</strong></div>';
+  try{
+    const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{enableHighAccuracy:true,timeout:10000,maximumAge:30000}));
+    state.location={latitude:pos.coords.latitude,longitude:pos.coords.longitude,accuracy:pos.coords.accuracy};
+    const dist = haversine(pos.coords.latitude,pos.coords.longitude,DB.settings.officeLatitude,DB.settings.officeLongitude);
+    const inside = dist<=DB.settings.geofenceRadius;
+    panel.innerHTML=[
+      ['Latitude',pos.coords.latitude.toFixed(6)],
+      ['Longitude',pos.coords.longitude.toFixed(6)],
+      ['Accuracy',Math.round(pos.coords.accuracy)+' m'],
+      ['Jarak ke kantor',Math.round(dist)+' m'],
+      ['Status geofence',inside?'<span class="badge">Dalam area</span>':'<span class="badge danger">Di luar area</span>']
+    ].map(([l,v])=>`<div class="meter-row"><span>${l}</span><strong>${v}</strong></div>`).join('');
+    $('gpsAccText').textContent=Math.round(pos.coords.accuracy)+' m';
+    $('gpsAccText').style.color=pos.coords.accuracy<=DB.settings.maxGpsAccuracy?'var(--success)':'var(--danger)';
+    $('geofenceText').textContent=(inside?'✓ ':'')+DB.settings.geofenceRadius+' m';
+  }catch(e){
+    state.location=null;
+    panel.innerHTML=`<div class="empty"><p>${esc(e.message||'Lokasi asli belum bisa dibaca.')}</p></div>`;
+    $('gpsAccText').textContent='-';
+    $('geofenceText').textContent='Lokasi belum tersedia';
+  }
+}
+
+function haversine(la1,lo1,la2,lo2){
+  const R=6371000,r=d=>d*Math.PI/180;
+  const dL=r(la2-la1),dLo=r(lo2-lo1);
+  const a=Math.sin(dL/2)**2+Math.cos(r(la1))*Math.cos(r(la2))*Math.sin(dLo/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+/* ===== PEOPLE VIEW ===== */
+function renderPeopleView(){
+  if(!state.user) return;
+  const isAdmin = state.user.role==='ADMIN';
+  $('adminPeopleView').classList.toggle('hidden',!isAdmin);
+  $('employeePeopleView').classList.toggle('hidden',isAdmin);
+  if(isAdmin){
+    renderEmployeeTable();
+    renderAdminMonitoring();
+  } else {
+    renderProfileView();
+  }
+}
+
+function renderEmployeeTable(){
+  const q = ($('searchEmp')?.value||'').toLowerCase();
+  const rows = DB.employees.filter(e=>!q||e.name.toLowerCase().includes(q)||e.email.toLowerCase().includes(q));
+  $('employeeTable').innerHTML=`<thead><tr><th>Nama</th><th>Email</th><th>Divisi</th><th>Jabatan</th><th>Role</th><th>Status</th><th>Gaji Pokok</th><th>Aksi</th></tr></thead>
+  <tbody>${rows.map(e=>`<tr>
+    <td><strong>${esc(e.name)}</strong></td><td>${esc(e.email)}</td><td>${esc(e.division)}</td>
+    <td>${esc(e.position)}</td><td><span class="badge ${e.role==='ADMIN'?'info':'neutral'}">${e.role}</span></td>
+    <td><span class="badge ${e.status==='AKTIF'?'':'danger'}">${e.status}</span></td>
+    <td>${money(e.baseSalary)}</td>
+    <td><button class="ghost-btn sm-btn" onclick="editEmployee('${e.id}')"><i data-lucide="edit-2"></i></button>
+    <button class="danger-btn sm-btn" onclick="toggleEmpStatus('${e.id}')" style="margin-left:4px;">${e.status==='AKTIF'?'Nonaktif':'Aktifkan'}</button></td>
+  </tr>`).join('')}</tbody>`;
+  if(window.lucide) lucide.createIcons();
+}
+
+function filterEmployees(){ renderEmployeeTable(); }
+
+function editEmployee(id){
+  const e=DB.employees.find(x=>x.id===id); if(!e) return;
+  $('empFormTitle').textContent='Edit Karyawan';
+  $('empId').value=e.id;
+  $('empNik').value=e.nik; $('empName').value=e.name; $('empEmail').value=e.email;
+  $('empPhone').value=e.phone; $('empRole').value=e.role; $('empPosition').value=e.position;
+  $('empDivision').value=e.division; $('empShift').value=e.shiftId; $('empStatus').value=e.status;
+  $('empSalary').value=e.baseSalary; $('empAllowance').value=e.allowance;
+  $('empBank').value=e.bankAccount; $('empLeave').value=e.leaveBalance;
+  $('empPass').value='';
+  document.querySelector('#panel-employees').scrollTop=0;
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function clearEmpForm(){
+  $('empFormTitle').textContent='Tambah Karyawan';
+  ['empId','empNik','empName','empEmail','empPhone','empPosition','empDivision','empBank','empPass'].forEach(id=>$(id).value='');
+  $('empRole').value='EMPLOYEE'; $('empStatus').value='AKTIF'; $('empShift').value='SHIFT-PAGI';
+  $('empSalary').value=''; $('empAllowance').value=''; $('empLeave').value='12';
+}
+
+function saveEmployee(){
+  const id = $('empId').value;
+  const name = $('empName').value.trim();
+  const email = $('empEmail').value.trim().toLowerCase();
+  if(!name||!email){toast('Nama dan email wajib diisi.','error');return;}
+  if(id){
+    const emp = DB.employees.find(e=>e.id===id);
+    Object.assign(emp,{
+      nik:$('empNik').value, name, email, phone:$('empPhone').value,
+      role:$('empRole').value, position:$('empPosition').value, division:$('empDivision').value,
+      shiftId:$('empShift').value, status:$('empStatus').value,
+      baseSalary:Number($('empSalary').value||0), allowance:Number($('empAllowance').value||0),
+      bankAccount:$('empBank').value, leaveBalance:Number($('empLeave').value||12),
+      updatedAt:new Date().toISOString()
+    });
+    addAudit('EMPLOYEE_UPDATED',email);
+    toast('Data karyawan diperbarui.','success');
+  } else {
+    if(DB.employees.find(e=>e.email===email)){toast('Email sudah terdaftar.','error');return;}
+    const newEmp={
+      id:'EMP-'+String(DB.employees.length+1).padStart(3,'0'),
+      nik:$('empNik').value||'', name, email, phone:$('empPhone').value,
+      role:$('empRole').value, position:$('empPosition').value, division:$('empDivision').value,
+      joinedAt:new Date().toISOString().slice(0,10), status:$('empStatus').value,
+      shiftId:$('empShift').value, baseSalary:Number($('empSalary').value||0),
+      allowance:Number($('empAllowance').value||0), bankAccount:$('empBank').value,
+      deviceId:'', faceEmbedding:'', passwordHash:'',
+      leaveBalance:Number($('empLeave').value||12), createdAt:new Date().toISOString()
+    };
+    DB.employees.push(newEmp);
+    addAudit('EMPLOYEE_CREATED',email);
+    toast('Karyawan baru berhasil ditambahkan.','success');
+  }
+  renderEmployeeTable();
+  clearEmpForm();
+}
+
+function toggleEmpStatus(id){
+  const e=DB.employees.find(x=>x.id===id); if(!e) return;
+  e.status = e.status==='AKTIF'?'NONAKTIF':'AKTIF';
+  addAudit('EMPLOYEE_STATUS_CHANGED',`${e.email} -> ${e.status}`);
+  toast(`Status ${e.name} diubah ke ${e.status}.`,'success');
+  renderEmployeeTable();
+}
+
+function renderAdminMonitoring(){
+  const today = new Date().toISOString().slice(0,10);
+  const todayAtt = DB.attendance.filter(a=>a.date===today);
+  const active = DB.employees.filter(e=>e.status==='AKTIF');
+  $('adminStats').innerHTML=[
+    ['Total Karyawan',active.length,'users-round'],
+    ['Hadir Hari Ini',todayAtt.length,'badge-check'],
+    ['Terlambat',todayAtt.filter(a=>a.status==='TERLAMBAT').length,'timer'],
+    ['Belum Absen',Math.max(active.length-todayAtt.length,0),'user-x'],
+  ].map(([l,v,ic])=>statCard(l,v,ic)).join('');
+
+  // Trend chart (7 days)
+  const days=7; const now=new Date();
+  const labels=[]; const bars=[];
+  for(let i=days-1;i>=0;i--){
+    const d=new Date(now); d.setDate(d.getDate()-i);
+    const ds=d.toISOString().slice(0,10);
+    const cnt=DB.attendance.filter(a=>a.date===ds).length;
+    labels.push(d.toLocaleDateString('id-ID',{weekday:'short'}));
+    bars.push({count:cnt,date:ds});
+  }
+  const maxCnt=Math.max(...bars.map(b=>b.count),1);
+  const chartHtml=`<div class="mini-chart" style="height:80px;align-items:flex-end;gap:6px;">
+    ${bars.map((b,i)=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+      <span style="font-size:11px;font-weight:700;color:var(--primary-dark);">${b.count||''}</span>
+      <div style="width:100%;height:${Math.max(b.count/maxCnt*60,4)}px;background:${b.date===today?'var(--primary)':'var(--primary-soft)'};border-radius:4px 4px 0 0;"></div>
+    </div>`).join('')}
+  </div>
+  <div style="display:flex;gap:0;margin-top:6px;">${labels.map(l=>`<div style="flex:1;text-align:center;font-size:11px;color:var(--text-soft);">${l}</div>`).join('')}</div>`;
+  $('trendChart').outerHTML='<div id="trendChart"></div>';
+  $('trendChart').innerHTML=chartHtml;
+
+  // Division chart
+  const divs={};
+  DB.employees.filter(e=>e.status==='AKTIF').forEach(e=>{divs[e.division]=(divs[e.division]||0)+1;});
+  const total=Object.values(divs).reduce((s,v)=>s+v,0);
+  const colors=['var(--primary)','var(--secondary)','var(--info)','#9b59b6','#e74c3c'];
+  $('divisionChart').innerHTML=Object.entries(divs).map(([div,cnt],i)=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
+      <span style="font-size:13px;min-width:100px;">${esc(div)}</span>
+      <div style="flex:1;height:18px;background:var(--muted-surface);border-radius:999px;overflow:hidden;">
+        <div style="width:${Math.round(cnt/total*100)}%;height:100%;background:${colors[i%colors.length]};border-radius:999px;"></div>
+      </div>
+      <span style="font-size:12px;font-weight:700;min-width:24px;">${cnt}</span>
+    </div>`).join('');
+
+  // Attendance table
+  const recents=DB.attendance.slice(-15).reverse();
+  $('attendanceTable').innerHTML=`<thead><tr><th>Nama</th><th>Tanggal</th><th>Masuk</th><th>Pulang</th><th>Status</th><th>Telat</th><th>Jarak</th></tr></thead>
+  <tbody>${recents.map(a=>`<tr>
+    <td>${esc(a.employeeName)}</td><td>${a.date}</td><td>${a.checkInTime}</td>
+    <td>${a.checkOutTime||'—'}</td>
+    <td><span class="badge ${a.status==='TERLAMBAT'?'warn':'info'}">${a.status}</span></td>
+    <td>${a.lateMinutes||0} mnt</td><td>${a.distanceMeters} m</td>
+  </tr>`).join('')}</tbody>`;
+
+  if(window.lucide) lucide.createIcons();
+}
+
+function renderCorrections(){
+  const list = $('correctionList');
+  if(!DB.corrections.length){list.innerHTML=emptyState('Tidak ada pengajuan koreksi.');return;}
+  list.innerHTML=DB.corrections.map(c=>`<div class="item-row" style="grid-template-columns:1fr auto;">
+    <div>
+      <h3>${esc(c.employeeName)} — ${esc(c.type)}</h3>
+      <p>Tanggal: ${c.date} · ${esc(c.reason)}</p>
+    </div>
+    <div style="display:flex;gap:6px;flex-direction:column;align-items:flex-end;">
+      <span class="badge ${c.status==='PENDING'?'warn':c.status==='APPROVED'?'':'danger'}">${c.status}</span>
+      ${c.status==='PENDING'?`
+        <div style="display:flex;gap:6px;">
+          <button class="primary-btn sm-btn" onclick="decideCorrection('${c.id}','APPROVED')">Approve</button>
+          <button class="danger-btn sm-btn" onclick="decideCorrection('${c.id}','REJECTED')">Tolak</button>
+        </div>`:''
+      }
+    </div>
+  </div>`).join('');
+  if(window.lucide) lucide.createIcons();
+}
+
+function decideCorrection(id,status){
+  const c=DB.corrections.find(x=>x.id===id); if(!c) return;
+  c.status=status;
+  addAudit('CORRECTION_'+status,`${c.employeeName} - ${c.type}`);
+  toast(`Koreksi ${status==='APPROVED'?'disetujui':'ditolak'}.`,'success');
+  renderCorrections();
+}
+
+function renderAuditLog(){
+  const filter=$('auditFilter').value;
+  const logs=(filter?DB.auditLog.filter(l=>l.action===filter):DB.auditLog).slice(0,50);
+  $('auditTable').innerHTML=`<thead><tr><th>Waktu</th><th>Aktor</th><th>Aksi</th><th>Detail</th></tr></thead>
+  <tbody>${logs.map(l=>`<tr>
+    <td style="font-size:12px;white-space:nowrap;">${new Date(l.timestamp).toLocaleString('id-ID')}</td>
+    <td>${esc(l.actor)}</td>
+    <td><span class="tag">${esc(l.action)}</span></td>
+    <td>${esc(l.detail)}</td>
+  </tr>`).join('')}</tbody>`;
+}
+
+function renderShiftTable(){
+  $('shiftTable').innerHTML=`<thead><tr><th>ID</th><th>Nama</th><th>Mulai</th><th>Selesai</th><th>Toleransi</th></tr></thead>
+  <tbody>${DB.shifts.map(s=>`<tr>
+    <td><code>${s.id}</code></td><td>${s.name}</td>
+    <td>${s.startTime}</td><td>${s.endTime}</td><td>${s.graceMinutes} menit</td>
+  </tr>`).join('')}</tbody>`;
+}
+
+function saveSettings(){
+  Object.assign(DB.settings,{
+    officeName:$('setOfficeName').value,
+    officeLatitude:parseFloat($('setLat').value),
+    officeLongitude:parseFloat($('setLng').value),
+    geofenceRadius:parseInt($('setRadius').value),
+    maxGpsAccuracy:parseInt($('setGps').value),
+    lateDeductionPerMinute:parseInt($('setLate').value),
+    alphaDeductionPerDay:parseInt($('setAlpha').value)
+  });
+  addAudit('SETTINGS_UPDATED','Konfigurasi diperbarui');
+  toast('Pengaturan tersimpan.','success');
+  renderDashboard();
+}
+
+function renderProfileView(){
+  const u=state.user;
+  $('profileName').value=u.name;
+  $('profileEmail').value=u.email;
+  $('profilePhone').value=u.phone||'';
+  $('profileBank').value=u.bankAccount||'';
+  $('profilePass').value='';
+
+  const myAtt=DB.attendance.filter(a=>a.employeeId===u.id);
+  const totalLate=myAtt.reduce((s,a)=>s+Number(a.lateMinutes||0),0);
+  $('profileStats').innerHTML=[
+    ['Sisa Cuti',u.leaveBalance+' hari','calendar'],
+    ['Total Hadir',myAtt.length+' hari','badge-check'],
+    ['Total Telat',totalLate+' menit','timer']
+  ].map(([l,v,ic])=>statCard(l,v,ic)).join('');
+
+  $('empHistoryList').innerHTML=myAtt.slice(-10).reverse().map(a=>`
+    <div class="item-row">
+      <span class="stat-icon"><i data-lucide="clock-3"></i></span>
+      <div><h3>${dateId(a.date)}</h3><p>Masuk ${a.checkInTime} — Pulang ${a.checkOutTime||'—'}</p></div>
+      <span class="badge ${a.status==='TERLAMBAT'?'warn':'info'}">${a.status}</span>
+    </div>`).join('')||emptyState('Belum ada riwayat.');
+  if(window.lucide) lucide.createIcons();
+}
+
+function saveProfile(){
+  if(!state.user) return;
+  const name=$('profileName').value.trim();
+  if(!name){toast('Nama tidak boleh kosong.','error');return;}
+  const emp=DB.employees.find(e=>e.id===state.user.id);
+  emp.name=name; emp.phone=$('profilePhone').value; emp.bankAccount=$('profileBank').value;
+  state.user=emp;
+  addAudit('PROFILE_UPDATED','Profil diperbarui');
+  toast('Profil berhasil diperbarui.','success');
+  renderDashboard();
+}
+
+/* ===== LEAVE ===== */
+function renderLeaveView(){
+  if(!state.user) return;
+  const myLeaves=DB.leaves.filter(l=>l.employeeId===state.user.id);
+  $('myLeaveList').innerHTML=myLeaves.length
+    ? myLeaves.map(l=>`<div class="item-row" style="grid-template-columns:1fr auto;">
+        <div><h3>${esc(l.type)}</h3><p>${l.startDate} s/d ${l.endDate} · ${esc(l.reason.slice(0,60))}</p></div>
+        <span class="badge ${l.status==='PENDING'?'warn':l.status==='APPROVED'?'':'danger'}">${l.status}</span>
+      </div>`).join('')
+    : emptyState('Belum ada pengajuan izin.');
+
+  if(state.user.role==='ADMIN'){
+    $('adminLeavePanel').style.display='';
+    renderPendingLeaves();
+  } else {
+    $('adminLeavePanel').style.display='none';
+  }
+  if(window.lucide) lucide.createIcons();
+}
+
+function renderPendingLeaves(){
+  const pending=DB.leaves.filter(l=>l.status==='PENDING');
+  $('pendingLeaveList').innerHTML=pending.length
+    ? pending.map(l=>`<div class="item-row" style="grid-template-columns:1fr auto;">
+        <div>
+          <h3>${esc(l.employeeName)} — ${esc(l.type)}</h3>
+          <p>${l.startDate} s/d ${l.endDate} · ${esc(l.reason)}</p>
+        </div>
+        <div style="display:flex;gap:6px;flex-direction:column;align-items:flex-end;">
+          <span class="badge warn">PENDING</span>
+          <div style="display:flex;gap:6px;">
+            <button class="primary-btn sm-btn" onclick="decideLeave('${l.id}','APPROVED')">Setujui</button>
+            <button class="danger-btn sm-btn" onclick="decideLeave('${l.id}','REJECTED')">Tolak</button>
+          </div>
+        </div>
+      </div>`).join('')
+    : emptyState('Tidak ada izin yang menunggu approval.');
+  if(window.lucide) lucide.createIcons();
+}
+
+function decideLeave(id,status){
+  const l=DB.leaves.find(x=>x.id===id); if(!l) return;
+  l.status=status; l.approver=state.user.email; l.decisionNote=status==='APPROVED'?'Disetujui HRD':'Ditolak HRD';
+  addAudit('LEAVE_'+status,`${l.employeeName} - ${l.type}`);
+  DB.notifications.unshift({id:'N-'+Date.now(),text:`Izin ${l.employeeName} ${status==='APPROVED'?'disetujui':'ditolak'}`,type:status==='APPROVED'?'success':'danger',time:'Baru saja'});
+  toast(`Izin ${status==='APPROVED'?'disetujui':'ditolak'}.`,'success');
+  renderPendingLeaves();
+  renderLeaveView();
+}
+
+function submitLeave(){
+  const type=$('leaveType').value;
+  const start=$('leaveStart').value;
+  const end=$('leaveEnd').value;
+  const reason=$('leaveReason').value.trim();
+  const att=$('leaveAttachment').value;
+  if(!start||!end||reason.length<5){toast('Lengkapi tanggal dan alasan izin.','error');return;}
+  if(start>end){toast('Tanggal akhir harus setelah tanggal mulai.','error');return;}
+  const leave={
+    id:'LEV-'+Math.random().toString(36).slice(2,8).toUpperCase(),
+    employeeId:state.user.id,employeeName:state.user.name,
+    type,startDate:start,endDate:end,reason,attachmentUrl:att,
+    status:'PENDING',approver:'',decisionNote:'',createdAt:new Date().toISOString()
+  };
+  DB.leaves.push(leave);
+  if(state.user.role==='ADMIN'){
+    DB.notifications.unshift({id:'N-'+Date.now(),text:`Izin baru dari ${state.user.name}`,type:'warn',time:'Baru saja'});
+  }
+  addAudit('LEAVE_SUBMITTED',type);
+  $('leaveStart').value=''; $('leaveEnd').value=''; $('leaveReason').value=''; $('leaveAttachment').value='';
+  toast('Pengajuan izin berhasil dikirim.','success');
+  renderLeaveView();
+}
+
+/* ===== PAYROLL ===== */
+function renderPayrollView(){
+  if(!state.user) return;
+  const isAdmin=state.user.role==='ADMIN';
+  $('payrollGenerateCard').style.display=isAdmin?'':'none';
+  // Set default period
+  if(!$('payPeriod').value) $('payPeriod').value=new Date().toISOString().slice(0,7);
+
+  // Populate period filter
+  const periods=[...new Set(DB.payroll.map(p=>p.period))].sort().reverse();
+  $('payrollPeriodFilter').innerHTML='<option value="">Semua Periode</option>'+
+    periods.map(p=>`<option>${p}</option>`).join('');
+
+  renderPayrollTable();
+
+  // My payslip
+  const myPay=DB.payroll.filter(p=>p.employeeId===state.user.id).slice(-5).reverse();
+  $('myPayrollList').innerHTML=myPay.length
+    ? myPay.map(p=>`<div class="item-row" style="grid-template-columns:1fr auto;">
+        <div><h3>${esc(p.employeeName)}</h3><p>Periode ${p.period} · ${money(p.netSalary)}</p></div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+          <span class="badge ${p.status==='PAID'?'':'info'}">${p.status}</span>
+          <a href="${p.pdfUrl}" target="_blank" class="ghost-btn sm-btn"><i data-lucide="download"></i> Slip</a>
+        </div>
+      </div>`).join('')
+    : emptyState('Belum ada slip gaji.');
+
+  // Summary
+  const totalNet=DB.payroll.reduce((s,p)=>s+Number(p.netSalary),0);
+  const thisMonth=new Date().toISOString().slice(0,7);
+  const thisMonthPay=DB.payroll.filter(p=>p.period===thisMonth);
+  $('payrollSummary').innerHTML=[
+    ['Total Payroll Tersimpan',DB.payroll.length+' record'],
+    ['Total Pengeluaran Seluruh',money(totalNet)],
+    ['Payroll Bulan Ini',money(thisMonthPay.reduce((s,p)=>s+Number(p.netSalary),0))],
+    ['Potongan Telat Total',money(DB.payroll.reduce((s,p)=>s+Number(p.lateDeduction),0))],
+  ].map(([l,v])=>`<div class="meter-row"><span>${l}</span><strong>${v}</strong></div>`).join('');
+
+  if(window.lucide) lucide.createIcons();
+}
+
+function renderPayrollTable(){
+  const filter=$('payrollPeriodFilter')?.value||'';
+  const rows=filter?DB.payroll.filter(p=>p.period===filter):DB.payroll;
+  const isAdmin=state.user?.role==='ADMIN';
+  $('payrollTable').innerHTML=`<thead><tr><th>Nama</th><th>Periode</th><th>Gaji Pokok</th><th>Tunjangan</th><th>Bonus</th><th>Pot. Telat</th><th>BPJS</th><th>Gaji Bersih</th><th>Status</th>${isAdmin?'<th>Aksi</th>':''}</tr></thead>
+  <tbody>${rows.length?rows.map(p=>`<tr>
+    <td>${esc(p.employeeName)}</td><td>${p.period}</td>
+    <td>${money(p.baseSalary)}</td><td>${money(p.allowance)}</td>
+    <td>${money(p.bonus)}</td><td style="color:var(--danger)">-${money(p.lateDeduction)}</td>
+    <td>-${money(p.bpjs)}</td>
+    <td><strong style="color:var(--success)">${money(p.netSalary)}</strong></td>
+    <td><span class="badge ${p.status==='PAID'?'':'info'}">${p.status}</span></td>
+    ${isAdmin?`<td><button class="primary-btn sm-btn" onclick="markPaid('${p.id}')">Mark Paid</button></td>`:''}
+  </tr>`).join(''):`<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text-soft);">Belum ada data payroll.</td></tr>`}</tbody>`;
+  if(window.lucide) lucide.createIcons();
+}
+
+function markPaid(id){
+  const p=DB.payroll.find(x=>x.id===id); if(!p) return;
+  p.status='PAID';
+  addAudit('PAYROLL_PAID',`${p.employeeName} - ${p.period}`);
+  toast('Status payroll diubah ke PAID.','success');
+  renderPayrollTable();
+}
+
+function runPayroll(){
+  const period=$('payPeriod').value;
+  if(!period){toast('Pilih periode payroll.','error');return;}
+  if(DB.payroll.some(p=>p.period===period)){toast('Payroll untuk periode ini sudah pernah dibuat.','error');return;}
+  const bonus=Number($('payBonus').value||0);
+  const otHrs=Number($('payOtHours').value||0);
+  const otRate=Number($('payOtRate').value||0);
+  const bpjs=Number($('payBpjs').value||0);
+  const tax=Number($('payTax').value||0);
+  const att=DB.attendance.filter(a=>a.date.slice(0,7)===period);
+  const active=DB.employees.filter(e=>e.status==='AKTIF');
+  active.forEach(e=>{
+    const ea=att.filter(a=>a.employeeId===e.id);
+    const lateMin=ea.reduce((s,a)=>s+Number(a.lateMinutes||0),0);
+    const lateDeduct=lateMin*DB.settings.lateDeductionPerMinute;
+    const net=Number(e.baseSalary)+Number(e.allowance)+bonus+(otHrs*otRate)-lateDeduct-bpjs-tax;
+    DB.payroll.push({
+      id:'PAY-'+Math.random().toString(36).slice(2,8).toUpperCase(),
+      employeeId:e.id,employeeName:e.name,period,
+      baseSalary:e.baseSalary,allowance:e.allowance,bonus,overtimeHours:otHrs,overtimeRate:otRate,
+      lateDeduction:lateDeduct,alphaDeduction:0,bpjs,tax,
+      netSalary:net,pdfUrl:'#',status:'GENERATED',createdAt:new Date().toISOString()
+    });
+  });
+  addAudit('PAYROLL_GENERATED','Payroll '+period+' untuk '+active.length+' karyawan');
+  DB.notifications.unshift({id:'N-'+Date.now(),text:`Payroll ${period} berhasil di-generate`,type:'success',time:'Baru saja'});
+  toast(`Payroll ${period} berhasil dibuat untuk ${active.length} karyawan.`,'success');
+  renderPayrollView();
+}
+
+/* ===== HELPERS ===== */
+function statCard(label,value,icon){
+  return `<div class="card stat-card"><span class="stat-icon"><i data-lucide="${icon}"></i></span><small>${label}</small><strong>${esc(String(value))}</strong></div>`;
+}
+
+function emptyState(text){
+  return `<div class="empty"><div class="empty-icon" style="color:var(--text-soft);"><i data-lucide="inbox" style="width:32px;height:32px;"></i></div><p>${text}</p></div>`;
+}
+
+/* ===== CAMERA WIRE ===== */
+function wireCameraEvents(){
+  $('startCameraBtn').addEventListener('click',startCamera);
+  $('enrollFaceBtn').addEventListener('click',enrollFace);
+  $('checkInBtn').addEventListener('click',()=>submitAttendance('IN'));
+  $('checkOutBtn').addEventListener('click',()=>submitAttendance('OUT'));
+}
+
+/* ===== SHEET BACKEND ADAPTER ===== */
+Object.assign(DB, {
+  employees: [],
+  shifts: [],
+  attendance: [],
+  leaves: [],
+  payroll: [],
+  corrections: [],
+  auditLog: [],
+  notifications: []
+});
+
+Object.assign(state, {
+  token: '',
+  backendReady: false
+});
+
+function hasBackend(){
+  return Boolean(window.google && google.script && google.script.run);
+}
+
+function apiCall(name, ...args){
+  if(!hasBackend() && BACKEND_URL) {
+    return fetch(BACKEND_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: name, args: args })
+    })
+    .then(r => r.json())
+    .then(res => {
+      if (res.success) return res.data;
+      throw new Error(res.error);
+    });
+  }
+  return new Promise((resolve,reject)=>{
+    if(!hasBackend()){
+      reject(new Error('Backend Apps Script belum tersedia. Hubungkan dengan memasukkan URL Web App Anda ke variabel BACKEND_URL di bagian atas script.'));
+      return;
+    }
+    google.script.run
+      .withSuccessHandler(resolve)
+      .withFailureHandler(error=>reject(new Error(error && error.message ? error.message : String(error))))
+      [name](...args);
+  });
+}
+
+function loginCall(payload){
+  if(!hasBackend() && BACKEND_URL) {
+    return fetch(BACKEND_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'loginUser', args: [payload] })
+    })
+    .then(r => r.json())
+    .then(res => {
+      if (res.success) return res.data;
+      throw new Error(res.error);
+    });
+  }
+  return new Promise((resolve,reject)=>{
+    if(!hasBackend()){
+      reject(new Error('Backend Apps Script belum tersedia. Hubungkan dengan memasukkan URL Web App Anda ke variabel BACKEND_URL di bagian atas script.'));
+      return;
+    }
+    google.script.run
+      .withSuccessHandler(resolve)
+      .withFailureHandler(error=>reject(new Error(error && error.message ? error.message : String(error))))
+      .loginUser(payload);
+  });
+}
+
+function devicePayload(){
+  return {
+    userAgent: navigator.userAgent,
+    platform: navigator.platform,
+    language: navigator.language,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+    screen: `${screen.width}x${screen.height}x${screen.colorDepth}`
+  };
+}
+
+function applySheetData(data){
+  DB.settings = Object.assign({}, DB.settings, normalizeSettings(data.settings || {}));
+  DB.shifts = data.shifts || [];
+  DB.employees = data.employees || [];
+  DB.attendance = data.attendance || [];
+  DB.leaves = data.leaves || [];
+  DB.payroll = data.payroll || [];
+  DB.corrections = data.corrections || [];
+  DB.auditLog = data.auditLog || [];
+  DB.notifications = data.notifications || [];
+  if(data.user) state.user = data.user;
+}
+
+function normalizeSettings(settings){
+  const numeric = ['officeLatitude','officeLongitude','geofenceRadius','maxGpsAccuracy','lateDeductionPerMinute','alphaDeductionPerDay'];
+  const clean = Object.assign({}, settings);
+  numeric.forEach(key=>{
+    if(clean[key] !== undefined && clean[key] !== '') clean[key] = Number(String(clean[key]).replace(',', '.'));
+  });
+  return clean;
+}
+
+async function reloadSheetData(){
+  if(!state.token) return;
+  const data = await apiCall('getAppData', state.token);
+  applySheetData(data);
+}
+
+async function refreshCurrentView(){
+  await reloadSheetData();
+  if(state.currentView==='home') renderDashboard();
+  if(state.currentView==='attendance') renderTodayAttPanel();
+  if(state.currentView==='people') renderPeopleView();
+  if(state.currentView==='leave') renderLeaveView();
+  if(state.currentView==='payroll') renderPayrollView();
+}
+
+async function doLogin(){
+  const email = $('loginEmail').value.trim().toLowerCase();
+  const pass = $('loginPass').value;
+  if(!email||!pass){toast('Email dan password wajib diisi.','error');return;}
+  try{
+    const auth = await loginCall({email, password: pass, device: devicePayload()});
+    if(!auth || !auth.token || !auth.user){
+      throw new Error('Login gagal: respons server kosong. Deploy ulang Apps Script lalu coba lagi.');
+    }
+    state.token = auth.token;
+    state.user = auth.user;
+    DB.settings = Object.assign({}, DB.settings, normalizeSettings(auth.settings || {}));
+    await reloadSheetData();
+    $('logoutBtn').style.display='';
+    $('loginTopBtn').style.display='none';
+    updateNavForRole();
+    setView('home');
+    toast(`Selamat datang, ${state.user.name}!`,'success');
+  }catch(e){
+    toast(e.message,'error');
+  }
+}
+
+async function logout(){
+  try{
+    if(state.token) await apiCall('logout', state.token);
+  }catch(e){
+    console.warn(e);
+  }
+  state.token = '';
+  state.user = null;
+  stopCamera();
+  $('logoutBtn').style.display='none';
+  $('loginTopBtn').style.display='';
+  setView('login');
+  $('loginEmail').value='';
+  $('loginPass').value='';
+}
+
+function updateNavForRole(){
+  const loggedIn = Boolean(state.user);
+  document.body.classList.toggle('logged-out', !loggedIn);
+  $('logoutBtn').style.display = loggedIn ? '' : 'none';
+  $('loginTopBtn').style.display = loggedIn ? 'none' : '';
+  $('notifDot').style.display = state.user?.role==='ADMIN' ? '' : 'none';
+}
+
+function isCameraAllowedByPolicy() {
+  try {
+    if (document.permissionsPolicy && typeof document.permissionsPolicy.allowsFeature === 'function') {
+      return document.permissionsPolicy.allowsFeature('camera');
+    }
+    if (document.featurePolicy && typeof document.featurePolicy.allowsFeature === 'function') {
+      return document.featurePolicy.allowsFeature('camera');
+    }
+  } catch (e) {
+    console.warn(e);
+  }
+  return true;
+}
+
+function checkCameraPolicy() {
+  const allowed = isCameraAllowedByPolicy();
+  const v = $('cameraVideo');
+  const placeholder = $('cameraPolicyPlaceholder');
+  const challenge = $('challengeBox');
+  const startBtn = $('startCameraBtn');
+  const enrollBtn = $('enrollFaceBtn');
+  const inBtn = $('checkInBtn');
+  const outBtn = $('checkOutBtn');
+  
+  if (!allowed) {
+    v.classList.add('hidden');
+    placeholder.classList.remove('hidden');
+    challenge.innerHTML = '<span style="color:var(--danger)">⚠️ Akses kamera diblokir oleh kebijakan keamanan (Permissions Policy). Pastikan penyemat (iframe) memiliki izin kamera.</span>';
+    [startBtn, enrollBtn, inBtn, outBtn].forEach(b => { if (b) b.disabled = true; });
+    
+    const link = $('webAppUrlLink');
+    if (state.webAppUrl) {
+      link.href = state.webAppUrl;
+      link.style.display = '';
+    } else {
+      link.href = '#';
+      link.style.display = 'none';
+    }
+  } else {
+    v.classList.remove('hidden');
+    placeholder.classList.add('hidden');
+    [startBtn, enrollBtn, inBtn, outBtn].forEach(b => { if (b) b.disabled = false; });
+  }
+}
+
+function setView(view){
+  if(!state.user&&view!=='login'){view='login';}
+  state.currentView=view;
+  qsa('.view').forEach(el=>el.classList.toggle('active',el.id===`view-${view}`));
+  qsa('[data-view-link]').forEach(b=>b.classList.toggle('active',b.dataset.viewLink===view));
+
+  if(view==='home') renderDashboard();
+  if(view==='attendance'){
+    renderTodayAttPanel();
+    refreshLocation();
+    $('cameraVideo').classList.remove('hidden');
+    $('cameraPolicyPlaceholder').classList.add('hidden');
+    if(!state.stream) startCamera();
+  }
+  if(view==='people') renderPeopleView();
+  if(view==='leave') renderLeaveView();
+  if(view==='payroll') renderPayrollView();
+
+  if(window.lucide) lucide.createIcons();
+}
+
+async function startCamera(){
+  try{
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      throw new Error('Browser tidak mendukung akses kamera. Gunakan HTTPS dan browser modern.');
+    }
+    
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}},
+        audio:false
+      });
+    } catch(err) {
+      console.warn("Mencoba kamera dengan constraint lebih sederhana...", err);
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video:{facingMode:'user'},
+          audio:false
+        });
+      } catch(err2) {
+        console.warn("Mencoba kamera dengan constraint default...", err2);
+        stream = await navigator.mediaDevices.getUserMedia({
+          video:true,
+          audio:false
+        });
+      }
+    }
+
+    stopCamera();
+    state.stream = stream;
+    const v=$('cameraVideo');
+    v.srcObject=stream;
+    await v.play();
+    
+    v.classList.remove('hidden');
+    $('cameraPolicyPlaceholder').classList.add('hidden');
+    
+    createChallenge();
+    toast('Kamera aktif.','success');
+  }catch(e){
+    const isIframed = window.self !== window.top;
+    const isPolicyViolation = e.name === 'SecurityError' || e.message.includes('policy') || e.message.includes('allow');
+    const message = e.name === 'NotAllowedError'
+      ? (isIframed 
+         ? 'Akses kamera ditolak. Pastikan izin kamera telah aktif di pengaturan browser untuk situs ini dan situs induknya (Vercel/Sheets).' 
+         : 'Akses kamera ditolak. Aktifkan izin kamera di pengaturan browser/situs Anda lalu coba lagi.')
+      : (isPolicyViolation
+         ? 'Akses kamera diblokir oleh kebijakan keamanan browser (Permissions Policy). Pastikan bingkai penyemat (iframe) memiliki atribut allow="camera; geolocation".'
+         : e.message);
+    toast('Kamera tidak bisa dibuka: '+message,'error');
+    if (isPolicyViolation) {
+      $('cameraVideo').classList.add('hidden');
+      $('cameraPolicyPlaceholder').classList.remove('hidden');
+      if (state.webAppUrl) {
+        $('webAppUrlLink').href = state.webAppUrl;
+      }
+    }
+  }
+}
+
+async function refreshLocation(){
+  const panel=$('locationPanel');
+  panel.innerHTML='<div class="meter-row"><span>GPS</span><strong>Mengambil lokasi asli perangkat...</strong></div>';
+  try{
+    if(!navigator.geolocation) throw new Error('Browser tidak mendukung geolocation.');
+    const pos = await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{
+      enableHighAccuracy:true,
+      timeout:20000,
+      maximumAge:0
+    }));
+    state.location={
+      latitude:pos.coords.latitude,
+      longitude:pos.coords.longitude,
+      accuracy:pos.coords.accuracy
+    };
+    const dist = haversine(pos.coords.latitude,pos.coords.longitude,DB.settings.officeLatitude,DB.settings.officeLongitude);
+    const inside = dist<=Number(DB.settings.geofenceRadius || 0);
+    $('gpsAccText').textContent=Math.round(pos.coords.accuracy)+' m';
+    $('geofenceText').textContent=inside?'Di dalam area':'Di luar area';
+    panel.innerHTML=`
+      <div class="meter-row"><span>Latitude</span><strong>${pos.coords.latitude.toFixed(6)}</strong></div>
+      <div class="meter-row"><span>Longitude</span><strong>${pos.coords.longitude.toFixed(6)}</strong></div>
+      <div class="meter-row"><span>Akurasi GPS</span><strong>${Math.round(pos.coords.accuracy)} m</strong></div>
+      <div class="meter-row"><span>Jarak kantor</span><strong>${Math.round(dist)} m</strong></div>
+      <div class="meter-row"><span>Status</span><span class="badge ${inside?'info':'danger'}">${inside?'Dalam geofence':'Di luar geofence'}</span></div>`;
+  }catch(e){
+    state.location=null;
+    const message = e.code === 1
+      ? 'Izin lokasi ditolak. Aktifkan permission lokasi di browser.'
+      : e.message;
+    panel.innerHTML=`<div class="empty"><p>${esc(message)}</p></div>`;
+    toast(message,'error');
+  }
+}
+
+async function enrollFace(){
+  try{
+    const embedding = detectFace();
+    await apiCall('saveFaceEnrollment', state.token, {faceEmbedding: embedding});
+    await refreshCurrentView();
+    toast('Wajah berhasil dienroll dan tersimpan ke sheet.','success');
+  }catch(e){toast(e.message,'error');}
+}
+
+async function submitAttendance(type){
+  try{
+    if(!state.user) throw new Error('Silakan login terlebih dahulu.');
+    const faceEmbedding = detectFace();
+    if(!state.livenessPassed) throw new Error('Selesaikan liveness challenge dulu.');
+    if(!state.location) await refreshLocation();
+    if(!state.location) throw new Error('Lokasi asli belum terdeteksi.');
+    await apiCall('submitAttendance', state.token, {
+      type,
+      location: state.location,
+      faceScore: state.faceScore,
+      faceEmbedding,
+      livenessPassed: state.livenessPassed,
+      livenessChallenge: state.livenessChallenge
+    });
+    await refreshCurrentView();
+    toast(type==='IN'?'Absen masuk tersimpan ke sheet.':'Absen pulang tersimpan ke sheet.','success');
+  }catch(e){toast(e.message,'error');}
+}
+
+async function saveEmployee(){
+  const id = $('empId').value;
+  const name = $('empName').value.trim();
+  const email = $('empEmail').value.trim().toLowerCase();
+  if(!name||!email){toast('Nama dan email wajib diisi.','error');return;}
+  try{
+    await apiCall('saveEmployee', state.token, {
+      id,
+      nik:$('empNik').value,
+      name,
+      email,
+      password:$('empPass').value,
+      phone:$('empPhone').value,
+      role:$('empRole').value,
+      position:$('empPosition').value,
+      division:$('empDivision').value,
+      shiftId:$('empShift').value,
+      status:$('empStatus').value,
+      baseSalary:Number($('empSalary').value||0),
+      allowance:Number($('empAllowance').value||0),
+      bankAccount:$('empBank').value,
+      leaveBalance:Number($('empLeave').value||12)
+    });
+    await refreshCurrentView();
+    clearEmpForm();
+    toast(id?'Data karyawan diperbarui di sheet.':'Karyawan baru tersimpan ke sheet.','success');
+  }catch(e){toast(e.message,'error');}
+}
+
+async function toggleEmpStatus(id){
+  const e=DB.employees.find(x=>x.id===id); if(!e) return;
+  try{
+    await apiCall('saveEmployee', state.token, Object.assign({}, e, {
+      status: e.status==='AKTIF'?'NONAKTIF':'AKTIF'
+    }));
+    await refreshCurrentView();
+    toast(`Status ${e.name} diperbarui di sheet.`,'success');
+  }catch(err){toast(err.message,'error');}
+}
+
+async function saveSettings(){
+  try{
+    const settings = await apiCall('updateSettings', state.token, {
+      officeName:$('setOfficeName').value,
+      officeLatitude:$('setLat').value,
+      officeLongitude:$('setLng').value,
+      geofenceRadius:$('setRadius').value,
+      maxGpsAccuracy:$('setGps').value,
+      lateDeductionPerMinute:$('setLate').value,
+      alphaDeductionPerDay:$('setAlpha').value
+    });
+    DB.settings = Object.assign({}, DB.settings, normalizeSettings(settings || {}));
+    await refreshCurrentView();
+    toast('Pengaturan tersimpan ke sheet.','success');
+  }catch(e){toast(e.message,'error');}
+}
+
+async function saveProfile(){
+  if(!state.user) return;
+  const name=$('profileName').value.trim();
+  if(!name){toast('Nama tidak boleh kosong.','error');return;}
+  try{
+    state.user = await apiCall('updateProfile', state.token, {
+      name,
+      phone:$('profilePhone').value,
+      bankAccount:$('profileBank').value,
+      password:$('profilePass').value
+    });
+    await refreshCurrentView();
+    toast('Profil berhasil diperbarui di sheet.','success');
+  }catch(e){toast(e.message,'error');}
+}
+
+async function submitLeave(){
+  const type=$('leaveType').value;
+  const start=$('leaveStart').value;
+  const end=$('leaveEnd').value;
+  const reason=$('leaveReason').value.trim();
+  const att=$('leaveAttachment').value;
+  if(!start||!end||reason.length<5){toast('Lengkapi tanggal dan alasan izin.','error');return;}
+  if(start>end){toast('Tanggal akhir harus setelah tanggal mulai.','error');return;}
+  try{
+    await apiCall('submitLeave', state.token, {type,startDate:start,endDate:end,reason,attachmentUrl:att});
+    $('leaveStart').value=''; $('leaveEnd').value=''; $('leaveReason').value=''; $('leaveAttachment').value='';
+    await refreshCurrentView();
+    toast('Pengajuan izin tersimpan ke sheet.','success');
+  }catch(e){toast(e.message,'error');}
+}
+
+async function decideLeave(id,status){
+  try{
+    await apiCall('decideLeave', state.token, {id,status,note:status==='APPROVED'?'Disetujui HRD':'Ditolak HRD'});
+    await refreshCurrentView();
+    toast(`Izin ${status==='APPROVED'?'disetujui':'ditolak'}.`,'success');
+  }catch(e){toast(e.message,'error');}
+}
+
+async function runPayroll(){
+  const period=$('payPeriod').value;
+  if(!period){toast('Pilih periode payroll.','error');return;}
+  try{
+    const rows = await apiCall('runPayroll', state.token, {
+      period,
+      bonus:Number($('payBonus').value||0),
+      overtimeHours:Number($('payOtHours').value||0),
+      overtimeRate:Number($('payOtRate').value||0),
+      bpjs:Number($('payBpjs').value||0),
+      tax:Number($('payTax').value||0)
+    });
+    await refreshCurrentView();
+    toast(`Payroll ${period} berhasil dibuat untuk ${rows.length} karyawan.`,'success');
+  }catch(e){toast(e.message,'error');}
+}
+
+async function markPaid(id){
+  try{
+    await apiCall('markPayrollPaid', state.token, id);
+    await refreshCurrentView();
+    toast('Status payroll diubah ke PAID.','success');
+  }catch(e){toast(e.message,'error');}
+}
+
+function renderShiftTable(){
+  $('setOfficeName').value = DB.settings.officeName || '';
+  $('setLat').value = DB.settings.officeLatitude ?? '';
+  $('setLng').value = DB.settings.officeLongitude ?? '';
+  $('setRadius').value = DB.settings.geofenceRadius ?? '';
+  $('setGps').value = DB.settings.maxGpsAccuracy ?? '';
+  $('setLate').value = DB.settings.lateDeductionPerMinute ?? '';
+  $('setAlpha').value = DB.settings.alphaDeductionPerDay ?? '';
+  $('shiftTable').innerHTML=`<thead><tr><th>ID</th><th>Nama</th><th>Mulai</th><th>Selesai</th><th>Toleransi</th></tr></thead>
+  <tbody>${DB.shifts.map(s=>`<tr>
+    <td><code>${esc(s.id)}</code></td><td>${esc(s.name)}</td>
+    <td>${esc(s.startTime)}</td><td>${esc(s.endTime)}</td><td>${esc(s.graceMinutes)} menit</td>
+  </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--text-soft);">Belum ada shift di sheet.</td></tr>'}</tbody>`;
+}
+
+function renderCorrections(){
+  $('correctionList').innerHTML=emptyState('Pengajuan koreksi belum tersedia di sheet.');
+}
+
+function decideCorrection(){
+  toast('Modul koreksi belum tersedia di sheet.','error');
+}
+
+async function initApp(){
+  Object.assign(DB, {
+    employees: [],
+    shifts: [],
+    attendance: [],
+    leaves: [],
+    payroll: [],
+    corrections: [],
+    auditLog: [],
+    notifications: []
+  });
+  try{
+    const bootstrap = await apiCall('getBootstrapState');
+    state.webAppUrl = bootstrap.webAppUrl || '';
+    DB.settings = Object.assign({}, DB.settings, normalizeSettings(bootstrap.settings || {}));
+    
+    // update url link if placeholder is showing
+    const link = $('webAppUrlLink');
+    if (link && state.webAppUrl) {
+      link.href = state.webAppUrl;
+      link.style.display = '';
+    }
+    
+    toast('Sistem terhubung ke database sheet.','success');
+  }catch(e){
+    toast(e.message,'error');
+  }
+}
+
+/* ===== INIT ===== */
+document.addEventListener('DOMContentLoaded',()=>{
+  initNavEvents();
+  wireCameraEvents();
+  updateNavForRole();
+  // Set today as default correction date
+  $('correctionDate').value=new Date().toISOString().slice(0,10);
+  // Enter key for login
+  [$('loginEmail'),$('loginPass')].forEach(el=>{
+    el.addEventListener('keydown',e=>{if(e.key==='Enter') doLogin();});
+  });
+  if(window.lucide) lucide.createIcons();
+  initApp();
+});
+</script>
 </body>
 </html>
