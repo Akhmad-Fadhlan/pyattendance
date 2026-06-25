@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#25b9ba">
-  <title>pyattendance</title> 
+  <title>pyattendance</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
@@ -752,6 +752,8 @@ const state = {
   faceScore: 0,
   livenessChallenge: '',
   livenessPassed: false,
+  livenessConfirmed: false,
+  _livenessTimer: null,
   webAppUrl: ''
 };
 
@@ -1003,26 +1005,46 @@ function stopCamera(){
 }
 
 function createChallenge(){
-  const c=['Kedip mata lalu tahan wajah di tengah','Senyum selama dua detik','Putar kepala sedikit ke kiri','Putar kepala sedikit ke kanan'];
-  state.livenessChallenge = c[Math.floor(Math.random()*c.length)];
+  // Jangan reset liveness jika sudah lulus
+  if(state.livenessPassed) return;
+
+  const instructions = [
+    'Kedipkan mata',
+    'Senyum sejenak',
+    'Tengok sedikit ke kiri',
+    'Tengok sedikit ke kanan',
+    'Tahan wajah di tengah kamera'
+  ];
+  state.livenessChallenge = instructions.join(', ');
   state.livenessPassed = false;
   state.livenessConfirmed = false;
-  $('challengeBox').innerHTML = '🎯 '+state.livenessChallenge+
-    ' <button class="primary-btn sm-btn" style="margin-left:10px;" onclick="confirmLiveness()">✓ Konfirmasi Liveness</button>';
-  $('livenessText').textContent='Menunggu konfirmasi...';
-  $('livenessText').style.color='';
-}
 
-function confirmLiveness(){
-  if(!$('cameraVideo').srcObject){
-    toast('Kamera belum aktif. Nyalakan kamera dulu.','error');
-    return;
-  }
-  state.livenessPassed=true;
-  $('livenessText').textContent='✓ Lulus';
-  $('livenessText').style.color='var(--success)';
-  $('challengeBox').innerHTML = '✅ Liveness challenge selesai. Silakan lanjut absen.';
-  toast('Liveness challenge dikonfirmasi.','success');
+  let countdown = 3;
+  $('challengeBox').innerHTML = `<span id="livenessInstructions">🎯 Silakan lakukan: <strong>${instructions.join(' → ')}</strong></span><span id="livenessCountdown" style="margin-left:12px;font-weight:700;color:var(--primary);"> (${countdown})</span>`;
+  $('livenessText').textContent = 'Memverifikasi...';
+  $('livenessText').style.color = '';
+
+  if(state._livenessTimer) clearInterval(state._livenessTimer);
+  state._livenessTimer = setInterval(()=>{
+    countdown--;
+    const cdEl = $('livenessCountdown');
+    if(cdEl) cdEl.textContent = countdown > 0 ? ` (${countdown})` : '';
+    if(countdown <= 0){
+      clearInterval(state._livenessTimer);
+      state._livenessTimer = null;
+      if(!$('cameraVideo').srcObject){
+        $('challengeBox').innerHTML = '<span style="color:var(--danger)">⚠️ Kamera tidak aktif. Nyalakan kamera dulu.</span>';
+        $('livenessText').textContent = 'Kamera belum aktif';
+        return;
+      }
+      state.livenessPassed = true;
+      state.livenessConfirmed = true;
+      $('livenessText').textContent = '✓ Lulus';
+      $('livenessText').style.color = 'var(--success)';
+      $('challengeBox').innerHTML = '✅ Liveness selesai. Silakan lanjut absen.';
+      toast('Liveness challenge lulus.','success');
+    }
+  }, 1000);
 }
 
 function capturePhoto(){
@@ -1819,6 +1841,7 @@ function setView(view){
     $('cameraVideo').classList.remove('hidden');
     $('cameraPolicyPlaceholder').classList.add('hidden');
     if(!state.stream) startCamera();
+    else if(!state.livenessPassed) createChallenge();
   }
   if(view==='people') renderPeopleView();
   if(view==='leave') renderLeaveView();
@@ -1924,10 +1947,10 @@ async function refreshLocation(){
 
 async function enrollFace(){
   try{
+    if(!$('cameraVideo').srcObject) throw new Error('Kamera belum aktif. Nyalakan kamera dulu.');
     const photoData = capturePhoto();
-    if(!state.livenessPassed) throw new Error('Selesaikan liveness challenge dulu sebelum enroll wajah.');
-    await apiCall('saveFaceEnrollment', state.token, {faceEmbedding: 'enrolled', facePhoto: photoData});
-    state.user.faceEmbedding = 'enrolled';
+    if(!state.livenessPassed) throw new Error('Selesaikan liveness challenge dulu sebelum enroll wajah. Tunggu hitung mundur selesai.');
+    await apiCall('saveFaceEnrollment', state.token, {faceImage: photoData});
     await refreshCurrentView();
     toast('Wajah berhasil dienroll dan foto tersimpan ke Google Drive.','success');
   }catch(e){toast(e.message,'error');}
@@ -1937,21 +1960,28 @@ async function submitAttendance(type){
   try{
     if(!state.user) throw new Error('Silakan login terlebih dahulu.');
     if(!state.user.faceEmbedding) throw new Error('Wajah belum terdaftar. Lakukan Enroll Wajah terlebih dahulu.');
+    if(!$('cameraVideo').srcObject) throw new Error('Kamera belum aktif. Nyalakan kamera dulu.');
     const photoData = capturePhoto();
-    if(!state.livenessConfirmed) throw new Error('Selesaikan dan konfirmasi liveness challenge dulu.');
+    if(!state.livenessPassed) throw new Error('Selesaikan liveness challenge dulu. Tunggu hitung mundur 3 detik selesai.');
     if(!state.location) await refreshLocation();
-    if(!state.location) throw new Error('Lokasi asli belum terdeteksi.');
+    if(!state.location) throw new Error('Lokasi asli belum terdeteksi. Izinkan akses lokasi lalu coba lagi.');
     await apiCall('submitAttendance', state.token, {
       type,
       location: state.location,
       faceScore: state.faceScore,
-      facePhoto: photoData,
+      faceImage: photoData,
       livenessPassed: state.livenessPassed,
       livenessChallenge: state.livenessChallenge
     });
     await refreshCurrentView();
     toast(type==='IN'?'Absen masuk tersimpan ke sheet.':'Absen pulang tersimpan ke sheet.','success');
-    createChallenge();
+    // Reset liveness untuk absen berikutnya
+    state.livenessPassed = false;
+    state.livenessConfirmed = false;
+    if(state._livenessTimer) { clearInterval(state._livenessTimer); state._livenessTimer = null; }
+    $('challengeBox').innerHTML = '⏳ Tekan "Mulai Kamera" untuk memulai liveness baru.';
+    $('livenessText').textContent = 'Menunggu...';
+    $('livenessText').style.color = '';
   }catch(e){toast(e.message,'error');}
 }
 
