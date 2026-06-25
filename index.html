@@ -3,7 +3,7 @@
 <head>
   <base target="_top">
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"> 
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#25b9ba">
   <title>pyattendance</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1067,65 +1067,6 @@ function detectFace(){
   return photo;
 }
 
-function enrollFace(){
-  try{
-    detectFace();
-    state.user.faceEmbedding='enrolled';
-    DB.employees.find(e=>e.id===state.user.id).faceEmbedding='enrolled';
-    addAudit('FACE_ENROLLMENT','Face embedding diperbarui');
-    toast('Wajah berhasil dienroll!','success');
-    renderDashboard();
-  }catch(e){toast(e.message,'error');}
-}
-
-function submitAttendance(type){
-  try{
-    if(!state.user) throw new Error('Silakan login terlebih dahulu.');
-    detectFace();
-    if(!state.livenessPassed) throw new Error('Selesaikan liveness challenge dulu.');
-    if(!state.location) throw new Error('Izinkan akses lokasi terlebih dahulu.');
-
-    const today = new Date().toISOString().slice(0,10);
-    const now = new Date();
-    const timeStr = now.toTimeString().slice(0,8);
-
-    let att = DB.attendance.find(a=>a.employeeId===state.user.id&&a.date===today);
-    if(type==='IN'){
-      if(att) throw new Error('Kamu sudah absen masuk hari ini.');
-      const shift = DB.shifts.find(s=>s.id===state.user.shiftId)||DB.shifts[0];
-      const [sh,sm] = shift.startTime.split(':').map(Number);
-      const shiftStart = new Date(now); shiftStart.setHours(sh,sm+shift.graceMinutes,0);
-      const lateMin = Math.max(Math.round((now-shiftStart)/60000),0);
-      att = {
-        id:'ATT-'+Math.random().toString(36).slice(2,8).toUpperCase(),
-        employeeId:state.user.id,employeeName:state.user.name,date:today,
-        checkInTime:timeStr,checkOutTime:'',
-        latitude:state.location.latitude,longitude:state.location.longitude,
-        accuracy:state.location.accuracy,
-        distanceMeters:Math.round(haversine(state.location.latitude,state.location.longitude,DB.settings.officeLatitude,DB.settings.officeLongitude)),
-        faceScore:state.faceScore,livenessPassed:true,deviceId:devicePayload ? devicePayload().screen : '',
-        status:lateMin>0?'TERLAMBAT':'HADIR',workMinutes:0,lateMinutes:lateMin,
-        createdAt:now.toISOString()
-      };
-      DB.attendance.push(att);
-      addAudit('CHECK_IN','Absen masuk berhasil');
-      toast('Absen masuk berhasil!','success');
-    } else {
-      if(!att) throw new Error('Absen masuk belum ditemukan.');
-      if(att.checkOutTime) throw new Error('Kamu sudah absen pulang hari ini.');
-      const [ch,cm,cs] = att.checkInTime.split(':').map(Number);
-      const checkIn = new Date(today+'T'+att.checkInTime);
-      const workMin = Math.round((now-checkIn)/60000);
-      att.checkOutTime = timeStr;
-      att.workMinutes = workMin;
-      addAudit('CHECK_OUT','Absen pulang berhasil');
-      toast('Absen pulang berhasil!','success');
-    }
-    renderTodayAttPanel();
-    createChallenge();
-  }catch(e){toast(e.message,'error');}
-}
-
 function submitCorrection(){
   const type = $('correctionType').value;
   const date = $('correctionDate').value;
@@ -1948,7 +1889,7 @@ async function refreshLocation(){
 async function enrollFace(){
   try{
     if(!$('cameraVideo').srcObject) throw new Error('Kamera belum aktif. Nyalakan kamera dulu.');
-    const photoData = capturePhoto();
+    const photoData = detectFace();
     if(!state.livenessPassed) throw new Error('Selesaikan liveness challenge dulu sebelum enroll wajah. Tunggu hitung mundur selesai.');
     await apiCall('saveFaceEnrollment', state.token, {faceImage: photoData});
     await refreshCurrentView();
@@ -1961,7 +1902,7 @@ async function submitAttendance(type){
     if(!state.user) throw new Error('Silakan login terlebih dahulu.');
     if(!state.user.faceEmbedding) throw new Error('Wajah belum terdaftar. Lakukan Enroll Wajah terlebih dahulu.');
     if(!$('cameraVideo').srcObject) throw new Error('Kamera belum aktif. Nyalakan kamera dulu.');
-    const photoData = capturePhoto();
+    const photoData = detectFace();
     if(!state.livenessPassed) throw new Error('Selesaikan liveness challenge dulu. Tunggu hitung mundur 3 detik selesai.');
     if(!state.location) await refreshLocation();
     if(!state.location) throw new Error('Lokasi asli belum terdeteksi. Izinkan akses lokasi lalu coba lagi.');
