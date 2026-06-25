@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#25b9ba">
   <title>pyattendance</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin> 
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
   <script defer src="https://unpkg.com/lucide@latest"></script>
   <style>
@@ -953,52 +953,6 @@ function renderTodayAttPanel(){
   if(window.lucide) lucide.createIcons();
 }
 
-async function startCamera(){
-  try{
-    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-      throw new Error('Browser tidak mendukung akses kamera. Gunakan HTTPS dan browser modern.');
-    }
-    
-    let stream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},
-        audio:false
-      });
-    } catch(err) {
-      console.warn("Mencoba kamera dengan constraint lebih sederhana (mock)...", err);
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video:{facingMode:'user'},
-          audio:false
-        });
-      } catch(err2) {
-        console.warn("Mencoba kamera dengan constraint default (mock)...", err2);
-        stream = await navigator.mediaDevices.getUserMedia({
-          video:true,
-          audio:false
-        });
-      }
-    }
-
-    stopCamera();
-    state.stream = stream;
-    const v=$('cameraVideo'); v.srcObject=stream; v.play();
-    createChallenge();
-    toast('Kamera aktif.');
-  }catch(e){
-    const isIframed = window.self !== window.top;
-    const message = e.name === 'NotAllowedError'
-      ? (isIframed 
-         ? 'Akses kamera ditolak. Jika halaman ini dibuka di dalam bingkai/embed (seperti Google Sites atau sidebar), silakan buka URL Web App secara langsung di tab baru agar kamera dapat diakses.' 
-         : 'Akses kamera ditolak. Aktifkan izin kamera di pengaturan browser/situs Anda lalu coba lagi.')
-      : (e.name === 'OverconstrainedError'
-         ? 'Kamera tidak mendukung spesifikasi resolusi yang diminta.'
-         : e.message);
-    toast('Kamera tidak bisa dibuka: '+message,'error');
-  }
-}
-
 function stopCamera(){
   if(state.stream) state.stream.getTracks().forEach(t=>t.stop());
   state.stream=null;
@@ -1792,6 +1746,10 @@ function setView(view){
 }
 
 async function startCamera(){
+  if(state.cameraStarting) return;
+  state.cameraStarting = true;
+  const startBtnEl = $('startCameraBtn');
+  if(startBtnEl) startBtnEl.disabled = true;
   try{
     if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
       throw new Error('Browser tidak mendukung akses kamera. Gunakan HTTPS dan browser modern.');
@@ -1833,13 +1791,16 @@ async function startCamera(){
   }catch(e){
     const isIframed = window.self !== window.top;
     const isPolicyViolation = e.name === 'SecurityError' || e.message.includes('policy') || e.message.includes('allow');
+    const isAbortedPlay = e.name === 'AbortError';
     const message = e.name === 'NotAllowedError'
       ? (isIframed 
          ? 'Akses kamera ditolak. Pastikan izin kamera telah aktif di pengaturan browser untuk situs ini dan situs induknya (Vercel/Sheets).' 
          : 'Akses kamera ditolak. Aktifkan izin kamera di pengaturan browser/situs Anda lalu coba lagi.')
       : (isPolicyViolation
          ? 'Akses kamera diblokir oleh kebijakan keamanan browser (Permissions Policy). Pastikan bingkai penyemat (iframe) memiliki atribut allow="camera; geolocation".'
-         : e.message);
+         : (isAbortedPlay
+            ? 'Kamera masih memuat, tunggu sebentar lalu coba lagi.'
+            : e.message));
     toast('Kamera tidak bisa dibuka: '+message,'error');
     if (isPolicyViolation) {
       $('cameraVideo').classList.add('hidden');
@@ -1848,6 +1809,9 @@ async function startCamera(){
         $('webAppUrlLink').href = state.webAppUrl;
       }
     }
+  } finally {
+    state.cameraStarting = false;
+    if(startBtnEl) startBtnEl.disabled = false;
   }
 }
 
