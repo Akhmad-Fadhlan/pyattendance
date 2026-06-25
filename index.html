@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="id"> 
+<html lang="id">
 <head>
   <base target="_top">
   <meta charset="utf-8">
@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
   <script defer src="https://unpkg.com/lucide@latest"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
   <style>
     :root {
       --primary: #25b9ba;
@@ -719,7 +720,9 @@
 
 <script>
 /* ===== CONFIGURATION ===== */
-const BACKEND_URL = "https://script.google.com/macros/s/AKfycbw3pOXEdJNNT77_-eDdB_TCjgmJ7vPCcXUgFZkqH4jYJ3yxr2P0wJq0G0EaMsd-tXJYFw/exec"; // MASUKKAN URL WEB APP GOOGLE APPS SCRIPT ANDA DI SINI JIKA DI-UPLOAD KE VERCEL
+const BACKEND_URL = ""; // MASUKKAN URL WEB APP GOOGLE APPS SCRIPT ANDA DI SINI JIKA DI-UPLOAD KE VERCEL
+const FACE_MODEL_URL = "https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights"; // model pengenalan wajah (face-api.js)
+const FACE_MATCH_DISTANCE_THRESHOLD = 0.6; // ambang batas jarak wajah (face-api.js): <=0.6 dianggap orang yang sama
 
 /* ===== SHEET CACHE ===== */
 const DB = {
@@ -747,7 +750,9 @@ const state = {
   user: null,
   currentView: 'login',
   stream: null,
+  cameraStarting: false,
   faceReady: false,
+  faceDescriptor: null,
   location: null,
   faceScore: 0,
   livenessChallenge: '',
@@ -1001,6 +1006,27 @@ function createChallenge(){
   }, 1000);
 }
 
+async function loadFaceModels(){
+  const badge = $('faceModelStatus');
+  try{
+    if(badge){ badge.textContent='Memuat model wajah...'; badge.className='badge warn'; }
+    if(typeof faceapi === 'undefined'){
+      throw new Error('Library face-api.js gagal dimuat (cek koneksi internet).');
+    }
+    await Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri(FACE_MODEL_URL),
+      faceapi.nets.faceLandmark68TinyNet.loadFromUri(FACE_MODEL_URL),
+      faceapi.nets.faceRecognitionNet.loadFromUri(FACE_MODEL_URL)
+    ]);
+    state.faceReady = true;
+    if(badge){ badge.textContent='Model siap'; badge.className='badge info'; }
+  }catch(e){
+    state.faceReady = false;
+    if(badge){ badge.textContent='Model gagal dimuat'; badge.className='badge danger'; }
+    console.error('Gagal memuat model wajah:', e);
+  }
+}
+
 function capturePhoto(){
   const video = $('cameraVideo');
   const canvas = $('captureCanvas');
@@ -1012,12 +1038,33 @@ function capturePhoto(){
   return canvas.toDataURL('image/jpeg', 0.7);
 }
 
-function detectFace(){
+async function detectFace(){
+  const video = $('cameraVideo');
+  if(!video.srcObject) throw new Error('Kamera belum aktif. Tekan Mulai Kamera.');
+  if(!state.faceReady || typeof faceapi === 'undefined'){
+    $('faceScoreText').textContent = 'Model belum siap';
+    $('faceScoreText').style.color = 'var(--danger)';
+    throw new Error('Model pengenalan wajah belum siap. Tunggu beberapa saat lalu coba lagi.');
+  }
+
+  const detection = await faceapi
+    .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 }))
+    .withFaceLandmarks(true)
+    .withFaceDescriptor();
+
+  if(!detection){
+    state.faceDescriptor = null;
+    $('faceScoreText').textContent = 'Wajah tidak terdeteksi';
+    $('faceScoreText').style.color = 'var(--danger)';
+    throw new Error('Wajah tidak terdeteksi di kamera. Pastikan wajah Anda terlihat jelas, cukup cahaya, dan menghadap kamera.');
+  }
+
   const photo = capturePhoto();
-  state.faceScore = 0.93+Math.random()*.05;
+  state.faceDescriptor = Array.from(detection.descriptor);
+  state.faceScore = Math.round(detection.detection.score*100)/100;
   state.lastFacePhoto = photo;
-  $('faceScoreText').textContent = Math.round(state.faceScore*100)+'%';
-  $('faceScoreText').style.color = state.faceScore>=.9?'var(--success)':'var(--danger)';
+  $('faceScoreText').textContent = 'Wajah terdeteksi ('+Math.round(detection.detection.score*100)+'%)';
+  $('faceScoreText').style.color = 'var(--success)';
   return photo;
 }
 
@@ -1735,8 +1782,7 @@ function setView(view){
     refreshLocation();
     $('cameraVideo').classList.remove('hidden');
     $('cameraPolicyPlaceholder').classList.add('hidden');
-    if(!state.stream) startCamera();
-    else if(!state.livenessPassed) createChallenge();
+    if(state.stream && !state.livenessPassed) createChallenge();
   }
   if(view==='people') renderPeopleView();
   if(view==='leave') renderLeaveView();
@@ -1745,8 +1791,21 @@ function setView(view){
   if(window.lucide) lucide.createIcons();
 }
 
+function withTimeout_(promise, ms, timeoutMessage){
+  return new Promise((resolve, reject)=>{
+    const timer = setTimeout(()=>reject(new Error(timeoutMessage)), ms);
+    Promise.resolve(promise).then(
+      v=>{ clearTimeout(timer); resolve(v); },
+      e=>{ clearTimeout(timer); reject(e); }
+    );
+  });
+}
+
 async function startCamera(){
-  if(state.cameraStarting) return;
+  if(state.cameraStarting){
+    toast('Kamera sedang dimuat, tunggu sebentar lalu coba lagi.');
+    return;
+  }
   state.cameraStarting = true;
   const startBtnEl = $('startCameraBtn');
   if(startBtnEl) startBtnEl.disabled = true;
@@ -1757,23 +1816,23 @@ async function startCamera(){
     
     let stream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
+      stream = await withTimeout_(navigator.mediaDevices.getUserMedia({
         video:{facingMode:'user',width:{ideal:1280},height:{ideal:720}},
         audio:false
-      });
+      }), 15000, 'Permintaan akses kamera timeout. Coba lagi.');
     } catch(err) {
       console.warn("Mencoba kamera dengan constraint lebih sederhana...", err);
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
+        stream = await withTimeout_(navigator.mediaDevices.getUserMedia({
           video:{facingMode:'user'},
           audio:false
-        });
+        }), 15000, 'Permintaan akses kamera timeout. Coba lagi.');
       } catch(err2) {
         console.warn("Mencoba kamera dengan constraint default...", err2);
-        stream = await navigator.mediaDevices.getUserMedia({
+        stream = await withTimeout_(navigator.mediaDevices.getUserMedia({
           video:true,
           audio:false
-        });
+        }), 15000, 'Permintaan akses kamera timeout. Coba lagi.');
       }
     }
 
@@ -1781,7 +1840,7 @@ async function startCamera(){
     state.stream = stream;
     const v=$('cameraVideo');
     v.srcObject=stream;
-    await v.play();
+    await withTimeout_(v.play(), 8000, 'Video kamera gagal dimuat (timeout). Coba lagi.');
     
     v.classList.remove('hidden');
     $('cameraPolicyPlaceholder').classList.add('hidden');
@@ -1853,9 +1912,9 @@ async function refreshLocation(){
 async function enrollFace(){
   try{
     if(!$('cameraVideo').srcObject) throw new Error('Kamera belum aktif. Nyalakan kamera dulu.');
-    const photoData = detectFace();
     if(!state.livenessPassed) throw new Error('Selesaikan liveness challenge dulu sebelum enroll wajah. Tunggu hitung mundur selesai.');
-    await apiCall('saveFaceEnrollment', state.token, {faceImage: photoData});
+    const photoData = await detectFace();
+    await apiCall('saveFaceEnrollment', state.token, {faceImage: photoData, faceDescriptor: state.faceDescriptor});
     await refreshCurrentView();
     toast('Wajah berhasil dienroll dan foto tersimpan ke Google Drive.','success');
   }catch(e){toast(e.message,'error');}
@@ -1864,16 +1923,17 @@ async function enrollFace(){
 async function submitAttendance(type){
   try{
     if(!state.user) throw new Error('Silakan login terlebih dahulu.');
-    if(!state.user.faceEmbedding) throw new Error('Wajah belum terdaftar. Lakukan Enroll Wajah terlebih dahulu.');
+    if(!state.user.faceEnrolled) throw new Error('Wajah belum terdaftar dengan model pengenalan wajah saat ini. Lakukan Enroll Wajah terlebih dahulu.');
     if(!$('cameraVideo').srcObject) throw new Error('Kamera belum aktif. Nyalakan kamera dulu.');
-    const photoData = detectFace();
     if(!state.livenessPassed) throw new Error('Selesaikan liveness challenge dulu. Tunggu hitung mundur 3 detik selesai.');
+    const photoData = await detectFace();
     if(!state.location) await refreshLocation();
     if(!state.location) throw new Error('Lokasi asli belum terdeteksi. Izinkan akses lokasi lalu coba lagi.');
     await apiCall('submitAttendance', state.token, {
       type,
       location: state.location,
       faceScore: state.faceScore,
+      faceDescriptor: state.faceDescriptor,
       faceImage: photoData,
       livenessPassed: state.livenessPassed,
       livenessChallenge: state.livenessChallenge
@@ -2076,6 +2136,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     el.addEventListener('keydown',e=>{if(e.key==='Enter') doLogin();});
   });
   if(window.lucide) lucide.createIcons();
+  loadFaceModels();
   initApp();
 });
 </script>
