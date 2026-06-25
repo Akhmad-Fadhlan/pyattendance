@@ -1,4 +1,4 @@
-<!doctype html>  
+<!doctype html>
 <html lang="id">
 <head>
   <base target="_top">
@@ -1006,21 +1006,43 @@ function createChallenge(){
   const c=['Kedip mata lalu tahan wajah di tengah','Senyum selama dua detik','Putar kepala sedikit ke kiri','Putar kepala sedikit ke kanan'];
   state.livenessChallenge = c[Math.floor(Math.random()*c.length)];
   state.livenessPassed = false;
-  $('challengeBox').textContent = '🎯 '+state.livenessChallenge;
-  $('livenessText').textContent='Menunggu...';
-  setTimeout(()=>{
-    state.livenessPassed=true;
-    $('livenessText').textContent='✓ Lulus';
-    $('livenessText').style.color='var(--success)';
-  },2200);
+  state.livenessConfirmed = false;
+  $('challengeBox').innerHTML = '🎯 '+state.livenessChallenge+
+    ' <button class="primary-btn sm-btn" style="margin-left:10px;" onclick="confirmLiveness()">✓ Konfirmasi Liveness</button>';
+  $('livenessText').textContent='Menunggu konfirmasi...';
+  $('livenessText').style.color='';
+}
+
+function confirmLiveness(){
+  if(!$('cameraVideo').srcObject){
+    toast('Kamera belum aktif. Nyalakan kamera dulu.','error');
+    return;
+  }
+  state.livenessPassed=true;
+  $('livenessText').textContent='✓ Lulus';
+  $('livenessText').style.color='var(--success)';
+  $('challengeBox').innerHTML = '✅ Liveness challenge selesai. Silakan lanjut absen.';
+  toast('Liveness challenge dikonfirmasi.','success');
+}
+
+function capturePhoto(){
+  const video = $('cameraVideo');
+  const canvas = $('captureCanvas');
+  if(!video.srcObject) throw new Error('Kamera belum aktif. Tekan Mulai Kamera.');
+  canvas.width = video.videoWidth || 640;
+  canvas.height = video.videoHeight || 480;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', 0.7);
 }
 
 function detectFace(){
-  if(!$('cameraVideo').srcObject) throw new Error('Kamera belum aktif. Tekan Mulai Kamera.');
+  const photo = capturePhoto();
   state.faceScore = 0.93+Math.random()*.05;
+  state.lastFacePhoto = photo;
   $('faceScoreText').textContent = Math.round(state.faceScore*100)+'%';
   $('faceScoreText').style.color = state.faceScore>=.9?'var(--success)':'var(--danger)';
-  return JSON.stringify({fallback:true,ts:new Date().toISOString()});
+  return photo;
 }
 
 function enrollFace(){
@@ -1902,30 +1924,34 @@ async function refreshLocation(){
 
 async function enrollFace(){
   try{
-    const embedding = detectFace();
-    await apiCall('saveFaceEnrollment', state.token, {faceEmbedding: embedding});
+    const photoData = capturePhoto();
+    if(!state.livenessPassed) throw new Error('Selesaikan liveness challenge dulu sebelum enroll wajah.');
+    await apiCall('saveFaceEnrollment', state.token, {faceEmbedding: 'enrolled', facePhoto: photoData});
+    state.user.faceEmbedding = 'enrolled';
     await refreshCurrentView();
-    toast('Wajah berhasil dienroll dan tersimpan ke sheet.','success');
+    toast('Wajah berhasil dienroll dan foto tersimpan ke Google Drive.','success');
   }catch(e){toast(e.message,'error');}
 }
 
 async function submitAttendance(type){
   try{
     if(!state.user) throw new Error('Silakan login terlebih dahulu.');
-    const faceEmbedding = detectFace();
-    if(!state.livenessPassed) throw new Error('Selesaikan liveness challenge dulu.');
+    if(!state.user.faceEmbedding) throw new Error('Wajah belum terdaftar. Lakukan Enroll Wajah terlebih dahulu.');
+    const photoData = capturePhoto();
+    if(!state.livenessConfirmed) throw new Error('Selesaikan dan konfirmasi liveness challenge dulu.');
     if(!state.location) await refreshLocation();
     if(!state.location) throw new Error('Lokasi asli belum terdeteksi.');
     await apiCall('submitAttendance', state.token, {
       type,
       location: state.location,
       faceScore: state.faceScore,
-      faceEmbedding,
+      facePhoto: photoData,
       livenessPassed: state.livenessPassed,
       livenessChallenge: state.livenessChallenge
     });
     await refreshCurrentView();
     toast(type==='IN'?'Absen masuk tersimpan ke sheet.':'Absen pulang tersimpan ke sheet.','success');
+    createChallenge();
   }catch(e){toast(e.message,'error');}
 }
 
